@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Prueba Firestore</title>
+</head>
+<body style="font-family: Arial; padding: 40px;">
+  <h1> Prueba de Firestore</h1>
+  <p>Abre la consola con F12 antes de hacer clic</p>
+  <button id="btn-test" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">
+    PROBAR FIRESTORE
+  </button>
+  <div id="resultado" style="margin-top: 20px; padding: 10px; background: #eee;"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDeDayD3sez1jTG-S8SlOyRnjbMA_IGB0I",
+      authDomain: "kanban-kallpa.firebaseapp.com",
+      projectId: "kanban-kallpa",
+      storageBucket: "kanban-kallpa.firebasestorage.app",
+      messagingSenderId: "548152702710",
+      appId: "1:548152702710:web:0d2b6af8137c8f14b85ed7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    console.log("✅ Firebase inicializado correctamente");
+    console.log("Objeto db:", db);
+
+    document.getElementById('btn-test').addEventListener('click', async () => {
+      const resultado = document.getElementById('resultado');
+      
+      try {
+        resultado.innerHTML = "🔄 Intentando...";
+        console.log("1. Iniciando sesión de prueba...");
+        
+        // Inicia sesión con tu cuenta (cambia por tu email real)
+        await signInWithEmailAndPassword(auth, "jaime@kg.com.pe", "123456");
+        console.log("2. Sesión iniciada. UID:", auth.currentUser.uid);
+        
+        console.log("3. Intentando escribir en Firestore...");
+        
+        await setDoc(doc(db, "usuarios", auth.currentUser.uid), {
+          email: "jaime@kg.com.pe",
+          nombre: "Jaime",
+          rol: "administrador",
+          fechaCreacion: new Date()
+        }, { merge: true });  // ← merge: true es CLAVE
+        
+        console.log("4. ✅ ¡ESCRITURA EXITOSA EN FIRESTORE!");
+        resultado.innerHTML = "🎉 ¡FUNCIONÓ! Revisa Firestore Console → colección 'usuarios'";
+        resultado.style.background = "#90EE90";
+        
+      } catch (error) {
+        console.error("❌ ERROR:", error);
+        resultado.innerHTML = "❌ Error: " + error.message;
+        resultado.style.background = "#FFB6C1";
+      }
+    });
+  </script>
+</body>
+</html>

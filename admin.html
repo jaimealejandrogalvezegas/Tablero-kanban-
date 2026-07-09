@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Gestion de Usuarios</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Panel de Administracion</h1>
+    <div id="usuario-info">
+      <a class="header-link" href="kanban.html">Volver al tablero</a>
+      <button onclick="cerrarSesion()">Cerrar sesion</button>
+    </div>
+  </header>
+
+  <main class="admin-panel">
+    <div class="admin-header">
+      <h2>Gestion de usuarios</h2>
+      <p>Cambia los roles operativos del tablero. Las reglas de Firestore se actualizan desde Firebase Console.</p>
+    </div>
+    <div id="lista-usuarios" class="usuarios-grid"></div>
+  </main>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

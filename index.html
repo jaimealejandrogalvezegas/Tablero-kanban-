@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Iniciar Sesión - Kanban Kallpa</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; }
+    .login-box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 350px; }
+    .login-box h2 { text-align: center; color: #2D1B4E; margin-bottom: 20px; }
+    .login-box input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; }
+    .login-box button { width: 100%; padding: 10px; background: linear-gradient(90deg, #2D1B4E, #FF6B35); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;}
+    .toggle-link { text-align: center; margin-top: 15px; font-size: 13px; color: #666; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>🔐 Kanban Kallpa</h2>
+    <input type="email" id="email" placeholder="Correo corporativo (ej: jaime@kg.com.pe)">
+    <input type="password" id="password" placeholder="Contraseña">
+    <button id="btn-login">Iniciar Sesión</button>
+    <button id="btn-registro" style="background: #95a5a6; margin-top: 10px;">Crear Cuenta</button>
+  </div>
+
+  <script type="module" src="js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Kallpa - Arquitectura TI</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header>
+    <h1>Tablero Kanban - Kallpa Generacion</h1>
+    <div class="header-actions">
+      <div id="usuario-info">
+        <span id="nombre-usuario">Cargando...</span>
+        <span id="rol-usuario" class="rol-chip">ROL</span>
+        <button id="btn-config" onclick="abrirConfig()" title="Configuración del tablero">⚙️</button>
+        <button onclick="cerrarSesion()">Cerrar sesion</button>
+      </div>
+      <div class="notif-wrapper">
+        <button class="btn-campana" onclick="toggleNotificaciones()" aria-label="Notificaciones">
+          &#128276;
+          <span id="notif-badge" class="notif-badge oculto">0</span>
+        </button>
+        <div id="notif-dropdown" class="notif-dropdown oculto">
+          <div class="notif-header">
+            <span>Notificaciones</span>
+            <button onclick="marcarTodasLeidas()">Marcar leidas</button>
+          </div>
+          <div id="notif-lista"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button id="btn-nueva-tarea" onclick="abrirModalTarea()">Nueva tarea</button>
+    <button id="btn-admin" onclick="abrirPanelAdmin()">Administrar usuarios</button>
+    <button id="btn-sprints" onclick="abrirModalSprints()">Sprints</button>
+    <button id="btn-etiquetas" onclick="abrirModalEtiquetas()">Etiquetas</button>
+    <button id="btn-invitaciones" onclick="abrirModalInvitaciones()">Invitaciones</button>
+    <select id="filtro-usuario" onchange="filtrarTareas()">
+      <option value="todos">Todos los usuarios</option>
+    </select>
+  </div>
+
+  <main class="tablero">
+    <div class="columna" data-estado="pendiente" ondrop="soltar(event)" ondragover="permitirSoltar(event)">
+      <h2>Pendiente <span class="contador">0</span></h2>
+      <div class="tarjetas" id="col-pendiente"></div>
+    </div>
+
+    <div class="columna" data-estado="en_proceso" ondrop="soltar(event)" ondragover="permitirSoltar(event)">
+      <h2>En proceso <span class="contador">0</span></h2>
+      <div class="tarjetas" id="col-en_proceso"></div>
+    </div>
+
+    <div class="columna" data-estado="terminado" ondrop="soltar(event)" ondragover="permitirSoltar(event)">
+      <h2>Terminado <span class="contador">0</span></h2>
+      <div class="tarjetas" id="col-terminado"></div>
+    </div>
+  </main>
+
+  <section id="vista-lista" class="vista-lista oculto">
+    <div class="lista-tabla" id="lista-tareas"></div>
+  </section>
+
+  <div id="modal-tarea" class="modal oculto">
+    <div class="modal-contenido">
+      <h2 id="modal-titulo">Nueva tarea</h2>
+
+      <label>Titulo *</label>
+      <input type="text" id="inp-titulo" required>
+
+      <label>Descripcion</label>
+      <textarea id="inp-descripcion" rows="3"></textarea>
+
+      <div class="fila-doble">
+        <div>
+          <label>Fecha limite</label>
+          <input type="date" id="inp-fecha">
+        </div>
+        <div>
+          <label>Prioridad</label>
+          <select id="inp-prioridad">
+            <option value="baja">Baja</option>
+            <option value="media" selected>Media</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Asignado a</label>
+      <select id="inp-asignado">
+        <option value="">-- Sin asignar --</option>
+      </select>
+      <label>Sprint</label>
+      <select id="inp-sprint">
+        <option value="">-- Sin sprint --</option>
+      </select>
+
+      <label>Etiquetas</label>
+      <div id="inp-etiquetas-container" class="etiquetas-selector"></div>
+      <label>Notas</label>
+      <textarea id="inp-notas" rows="2" placeholder="Observaciones..."></textarea>
+
+      <label>Subtareas</label>
+      <div id="subtareas-container"></div>
+      <div class="subtarea-input">
+        <input type="text" id="inp-subtarea" placeholder="Ej: Redactar documento">
+        <button type="button" onclick="agregarSubtarea()">+</button>
+      </div>
+
+      <div id="seccion-adjuntos" class="oculto">
+        <label>Adjuntos</label>
+        <div id="lista-adjuntos" class="lista-adjuntos"></div>
+        <div class="adjunto-input">
+          <input type="text" id="inp-adjunto-nombre" placeholder="Nombre del archivo">
+          <input type="url" id="inp-adjunto-url" placeholder="https://...">
+          <button type="button" onclick="guardarAdjunto()">Agregar</button>
+        </div>
+      </div>
+
+      <!-- NUEVO: SecciÃ³n de comentarios (solo visible al editar) -->
+      <div id="seccion-comentarios" class="oculto">
+        <label>Comentarios</label>
+        <div id="lista-comentarios" class="lista-comentarios"></div>
+        <div class="comentario-input">
+          <textarea id="inp-comentario" rows="2" placeholder="Escribe un comentario..."></textarea>
+          <button type="button" onclick="enviarComentario()">Enviar</button>
+        </div>
+      </div>
+
+      <div class="botones-modal">
+        <button onclick="guardarTarea()">Guardar</button>
+        <button onclick="cerrarModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+
+  <div id="modal-sprints" class="modal oculto">
+  <div class="modal-contenido">
+    <h2>Gestión de Sprints</h2>
+
+    <label>Nombre del sprint</label>
+    <input type="text" id="inp-sprint-nombre" placeholder="Ej: Sprint 1 - Julio">
+
+    <div class="fila-doble">
+      <div>
+        <label>Fecha inicio</label>
+        <input type="date" id="inp-sprint-inicio">
+      </div>
+      <div>
+        <label>Fecha fin</label>
+        <input type="date" id="inp-sprint-fin">
+      </div>
+    </div>
+
+    <div class="botones-modal">
+      <button onclick="guardarSprint()">Crear sprint</button>
+      <button onclick="cerrarModalSprints()">Cancelar</button>
+    </div>
+
+    <label style="margin-top: 16px;">Sprints existentes</label>
+    <div id="lista-sprints"></div>
+  </div>
+</div>
+<div id="modal-etiquetas" class="modal oculto">
+  <div class="modal-contenido">
+    <h2>Gestión de Etiquetas</h2>
+
+    <label>Nombre</label>
+    <input type="text" id="inp-etiqueta-nombre" placeholder="Ej: Urgente, Bug, Mejora">
+
+    <label>Color</label>
+    <input type="color" id="inp-etiqueta-color" value="#7F77DD">
+
+    <div class="botones-modal">
+      <button onclick="guardarEtiqueta()">Crear etiqueta</button>
+      <button onclick="cerrarModalEtiquetas()">Cancelar</button>
+    </div>
+
+    <label style="margin-top:16px;">Etiquetas existentes</label>
+    <div id="lista-etiquetas"></div>
+  </div>
+</div>
+<div id="modal-invitaciones" class="modal oculto">
+  <div class="modal-contenido">
+    <h2>Invitaciones</h2>
+
+    <label>Correo a invitar</label>
+    <input type="email" id="inp-invitacion-email" placeholder="usuario@kg.com.pe">
+
+    <div class="botones-modal">
+      <button onclick="enviarInvitacion()">Enviar invitación</button>
+      <button onclick="cerrarModalInvitaciones()">Cancelar</button>
+    </div>
+
+    <label style="margin-top:16px;">Invitaciones enviadas</label>
+    <div id="lista-invitaciones"></div>
+  </div>
+</div>
+<div id="modal-config" class="modal oculto">
+  <div class="modal-contenido">
+    <h2>Ajustes</h2>
+
+    <div id="seccion-preferencias-usuario">
+      <label style="display:flex;align-items:center;gap:10px;margin-top:15px;">
+        <input type="checkbox" id="cfg-tema-oscuro" style="width:auto;margin:0">
+        Modo oscuro
+      </label>
+    </div>
+
+    <div id="seccion-config-tablero">
+      <label>Vista por defecto</label>
+      <select id="cfg-vista">
+        <option value="kanban">Kanban</option>
+        <option value="lista">Lista</option>
+      </select>
+
+      <label style="display:flex;align-items:center;gap:10px;margin-top:15px;">
+        <input type="checkbox" id="cfg-notif-email" style="width:auto;margin:0">
+        Recibir notificaciones por email
+      </label>
+    </div>
+
+    <div class="botones-modal">
+      <button onclick="guardarConfig()">Guardar ajustes</button>
+      <button onclick="cerrarConfig()">Cancelar</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
