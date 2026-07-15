@@ -91,9 +91,7 @@ function proyectoActivo() {
 }
 
 function proyectoPorId(proyectoId) {
-  return proyectos.find(p => p.id === proyectoId) ||
-    proyectosAsignadosDesdeTareas().find(p => p.id === proyectoId) ||
-    null;
+  return proyectos.find(p => p.id === proyectoId) || null;
 }
 
 function proyectoEsVisibleParaMi(proyecto) {
@@ -107,12 +105,7 @@ function proyectoEsVisibleParaMi(proyecto) {
 }
 
 function proyectosVisibles() {
-  const mapa = new Map();
-  proyectos.filter(proyectoEsVisibleParaMi).forEach(p => mapa.set(p.id, p));
-  proyectosAsignadosDesdeTareas().forEach(p => {
-    if (!mapa.has(p.id)) mapa.set(p.id, p);
-  });
-  return Array.from(mapa.values());
+  return proyectos.filter(proyectoEsVisibleParaMi);
 }
 
 function proyectosAsignadosDesdeTareas() {
@@ -415,12 +408,7 @@ function sprintEsVisibleParaMi(sprint) {
 }
 
 function sprintsVisibles() {
-  const mapa = new Map();
-  sprints.filter(sprintEsVisibleParaMi).forEach(s => mapa.set(s.id, s));
-  sprintsAsignadosDesdeTareas().forEach(s => {
-    if (!mapa.has(s.id)) mapa.set(s.id, s);
-  });
-  return Array.from(mapa.values());
+  return sprints.filter(sprintEsVisibleParaMi);
 }
 
 function sprintsAsignadosDesdeTareas() {
