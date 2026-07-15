@@ -744,7 +744,10 @@ function tareasFiltradas() {
   let lista = puedeVerTodo() ? tareas : tareas.filter(tareaEsPropia);
 
   if (puedeVerTodo() && filtro !== 'todos') {
-    lista = lista.filter(t => t.asignadoUid === filtro);
+    lista = lista.filter(t =>
+      t.asignadoUid === filtro ||
+      (t.colaboradoresUids || []).includes(filtro)
+    );
   }
 
   if (texto) {
@@ -1797,7 +1800,10 @@ function actualizarSelectSprints() {
   if (!select) return;
   const valorActual = select.value;
   select.innerHTML = '<option value="">-- Sin sprint --</option>' +
-    sprintsVisibles().map(s => `<option value="${s.id}">${s.nombre} (${s.estado})</option>`).join('');
+    sprintsVisibles().map(s => {
+      const limite = s.fechaFin ? ` | limite: ${s.fechaFin}` : '';
+      return `<option value="${s.id}">${s.nombre}${limite} (${s.estado})</option>`;
+    }).join('');
   select.value = valorActual;
 }
 
@@ -1975,6 +1981,16 @@ function renderizarListaEtiquetas() {
 function renderizarSelectorEtiquetas() {
   const cont = document.getElementById('inp-etiquetas-container');
   if (!cont) return;
+  const resumen = document.getElementById('resumen-etiquetas');
+  const nombresSeleccionados = etiquetas
+    .filter(e => etiquetasSeleccionadas.includes(e.id))
+    .map(e => e.nombre);
+  if (resumen) {
+    resumen.textContent = nombresSeleccionados.length
+      ? truncarTexto(nombresSeleccionados.join(', '), 34)
+      : 'Seleccionar etiquetas';
+  }
+
   cont.innerHTML = etiquetas.map(e => `
     <label class="etiqueta-check">
       <input type="checkbox" value="${e.id}"
@@ -1992,6 +2008,7 @@ window.toggleEtiqueta = (etiquetaId) => {
   } else {
     etiquetasSeleccionadas.push(etiquetaId);
   }
+  renderizarSelectorEtiquetas();
 };
 
 function cargarNotificaciones() {
