@@ -126,9 +126,12 @@ function proyectosAsignadosDesdeTareas() {
   return Array.from(ids).map(id => {
     const tareasProyecto = tareasBase.filter(t => t.proyectoId === id);
     const resumen = resumenAsignacionDesdeTareas(tareasProyecto);
+    const nombreProyecto = tareasProyecto.find(t => t.proyectoNombre)?.proyectoNombre ||
+      resumen.titulos[0] ||
+      'Proyecto asignado';
     return {
       id,
-      nombre: resumen.titulos[0] || 'Sin titulo',
+      nombre: nombreProyecto,
       descripcion: '',
       estado: 'activo',
       fechaInicio: '',
@@ -431,9 +434,12 @@ function sprintsAsignadosDesdeTareas() {
   return Array.from(ids).map(id => {
     const tareasSprint = tareasBase.filter(t => t.sprintId === id);
     const resumen = resumenAsignacionDesdeTareas(tareasSprint);
+    const nombreSprint = tareasSprint.find(t => t.sprintNombre)?.sprintNombre ||
+      resumen.titulos[0] ||
+      'Sprint asignado';
     return {
       id,
-      nombre: resumen.titulos[0] || 'Sin titulo',
+      nombre: nombreSprint,
       objetivo: `Tareas asignadas: ${resumen.titulos.slice(0, 3).join(', ')}`,
       estado: 'activo',
       fechaInicio: '',
@@ -1019,7 +1025,7 @@ window.guardarTarea = async () => {
   const fechaLimite = document.getElementById('inp-fecha').value;
   const sprintId = document.getElementById('inp-sprint')?.value || '';
   const sprintSeleccionado = sprintId ? sprints.find(s => s.id === sprintId) : null;
-  const proyectoActivo = proyectoActivoId ? proyectos.find(p => p.id === proyectoActivoId) : null;
+  const proyectoActivo = proyectoActivoId ? proyectoPorId(proyectoActivoId) : null;
   const tiempoEstimadoHoras = Number(document.getElementById('inp-tiempo-estimado').value || 0);
 
   if (tiempoEstimadoHoras < 0) {
@@ -1103,7 +1109,9 @@ window.guardarTarea = async () => {
       creadoPorUid: tareaActual ? tareaActual.creadoPorUid : usuarioActual.uid,
       creadoPorEmail: tareaActual ? tareaActual.creadoPorEmail : usuarioActual.email,
       fechaCreacion: tareaActual ? tareaActual.fechaCreacion : serverTimestamp(),
-      proyectoId: tareaActual ? (tareaActual.proyectoId || null) : (proyectoActivoId || null)
+      proyectoId: tareaActual ? (tareaActual.proyectoId || null) : (proyectoActivoId || null),
+      proyectoNombre: proyectoActivo?.nombre || tareaActual?.proyectoNombre || '',
+      sprintNombre: sprintSeleccionado?.nombre || tareaActual?.sprintNombre || ''
     };
   }
 
