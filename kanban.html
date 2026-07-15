@@ -199,47 +199,52 @@
     <h2>Gestión de Sprints</h2>
     <p id="texto-sprints-consulta" class="texto-ayuda-modal"></p>
 
-    <label>Nombre del sprint</label>
-    <input type="text" id="inp-sprint-nombre" placeholder="Ej: Sprint 1 - Julio">
+    <div id="seccion-gestion-sprint">
+      <label>Nombre del sprint</label>
+      <input type="text" id="inp-sprint-nombre" placeholder="Ej: Sprint 1 - Julio">
 
-    <label>Objetivo</label>
-    <textarea id="inp-sprint-objetivo" rows="2" placeholder="Ej: Diseñar módulo de autenticación"></textarea>
+      <label>Objetivo</label>
+      <textarea id="inp-sprint-objetivo" rows="2" placeholder="Ej: Diseñar módulo de autenticación"></textarea>
 
-    <div class="fila-doble">
-      <div>
-        <label>Fecha inicio</label>
-        <input type="date" id="inp-sprint-inicio">
+      <div class="fila-doble">
+        <div>
+          <label>Fecha inicio</label>
+          <input type="date" id="inp-sprint-inicio">
+        </div>
+        <div>
+          <label>Fecha fin</label>
+          <input type="date" id="inp-sprint-fin">
+        </div>
       </div>
-      <div>
-        <label>Fecha fin</label>
-        <input type="date" id="inp-sprint-fin">
-      </div>
-    </div>
 
-    <div class="fila-doble">
-      <div>
-        <label>Responsable</label>
-        <select id="inp-sprint-responsable">
-          <option value="">-- Sin responsable --</option>
-        </select>
+      <div class="fila-doble">
+        <div>
+          <label>Responsable</label>
+          <select id="inp-sprint-responsable">
+            <option value="">-- Sin responsable --</option>
+          </select>
+        </div>
+        <div>
+          <label>Capacidad (horas)</label>
+          <input type="number" id="inp-sprint-capacidad" min="0" step="1" placeholder="Ej: 160">
+        </div>
       </div>
-      <div>
-        <label>Capacidad (horas)</label>
-        <input type="number" id="inp-sprint-capacidad" min="0" step="1" placeholder="Ej: 160">
+
+      <label>Participantes</label>
+      <select id="inp-sprint-participantes" multiple size="4"></select>
+
+      <div class="botones-modal">
+        <button id="btn-guardar-sprint" onclick="guardarSprint()">Crear sprint</button>
+        <button onclick="cerrarModalSprints()">Cancelar</button>
       </div>
-    </div>
-
-    <label>Participantes</label>
-    <select id="inp-sprint-participantes" multiple size="4"></select>
-
-    <div class="botones-modal">
-      <button id="btn-guardar-sprint" onclick="guardarSprint()">Crear sprint</button>
-      <button onclick="cerrarModalSprints()">Cancelar</button>
     </div>
 
     <label style="margin-top: 16px;">Sprints existentes</label>
     <input type="text" id="buscar-sprint" class="buscador-modal" placeholder="Buscar sprint..." oninput="window.filtrarSprints()">
     <div id="lista-sprints"></div>
+    <div class="botones-modal">
+      <button onclick="cerrarModalSprints()">Cerrar</button>
+    </div>
   </div>
 </div>
 <div id="modal-etiquetas" class="modal oculto">

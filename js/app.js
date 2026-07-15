@@ -101,7 +101,8 @@ function proyectoEsVisibleParaMi(proyecto) {
     proyecto.responsableEmail === usuarioActual.email ||
     (proyecto.miembrosUids || []).includes(usuarioActual.uid) ||
     (proyecto.miembrosEmails || []).includes(usuarioActual.email) ||
-    tareasAsignadasUsuario.some(t => t.proyectoId === proyecto.id && tareaEsPropia(t));
+    tareasAsignadasUsuario.some(t => t.proyectoId === proyecto.id && tareaEsPropia(t)) ||
+    sprints.some(s => s.proyectoId === proyecto.id && sprintEsVisibleParaMi(s));
 }
 
 function proyectosVisibles() {
@@ -1659,6 +1660,8 @@ function aplicarModoModalSprints() {
 
   const btnGuardar = document.getElementById('btn-guardar-sprint');
   if (btnGuardar) btnGuardar.style.display = gestion ? 'inline-flex' : 'none';
+  const seccionGestion = document.getElementById('seccion-gestion-sprint');
+  if (seccionGestion) seccionGestion.style.display = gestion ? 'block' : 'none';
 
   const ayuda = document.getElementById('texto-sprints-consulta');
   if (ayuda) {
@@ -1776,8 +1779,13 @@ window.guardarSprint = async () => {
 
 function cargarSprints() {
   if (unsubSprints) unsubSprints();
-  unsubSprints = escucharSprints(tableroActualId, proyectoActivoId, (listaSprints) => {
+  const proyectoFiltro = puedeVerTodo() ? proyectoActivoId : null;
+  unsubSprints = escucharSprints(tableroActualId, proyectoFiltro, (listaSprints) => {
     sprints = listaSprints;
+    asegurarProyectoVisibleSeleccionado();
+    actualizarBotonProyectos();
+    renderizarListaProyectos();
+    actualizarEstadoProyectoActivo();
     actualizarSelectSprints();
     renderizarListaSprints();
   });
@@ -2577,5 +2585,20 @@ document.addEventListener('click', (e) => {
   if (!dropdown || !btn) return;
   if (!dropdown.classList.contains('oculto') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
     dropdown.classList.add('oculto');
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modalSprints = document.getElementById('modal-sprints');
+    if (modalSprints && !modalSprints.classList.contains('oculto')) {
+      window.cerrarModalSprints();
+    }
+  }
+});
+
+document.getElementById('modal-sprints')?.addEventListener('click', (e) => {
+  if (e.target.id === 'modal-sprints') {
+    window.cerrarModalSprints();
   }
 });
