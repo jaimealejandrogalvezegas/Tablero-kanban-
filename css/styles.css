@@ -95,6 +95,7 @@ header h1 {
 /* TOOLBAR */
 .toolbar {
   padding: 20px 30px;
+  padding-right: 250px;
   background: white;
   border-bottom: 2px solid #2D1B4E;
   display: flex;
@@ -129,6 +130,19 @@ header h1 {
   cursor: not-allowed;
   opacity: 0.72;
   transform: none;
+}
+
+#btn-admin {
+  background: linear-gradient(135deg, #E4572E, #FF8A2A);
+  box-shadow: 0 2px 8px rgba(228, 87, 46, 0.28);
+  margin-left: 0;
+  position: absolute;
+  right: 30px;
+  top: 20px;
+}
+
+#btn-admin:hover {
+  box-shadow: 0 4px 12px rgba(228, 87, 46, 0.38);
 }
 
 .toolbar select {
@@ -517,6 +531,12 @@ header h1 {
   border-bottom: 3px solid #FF6B35;
 }
 
+.modal-contenido h3 {
+  color: #2D1B4E;
+  font-size: 17px;
+  margin: 22px 0 8px;
+}
+
 .texto-ayuda-modal {
   background: #f7f3fb;
   border: 1px solid #e4dcec;
@@ -562,6 +582,26 @@ header h1 {
   background: #f3f4f6;
   color: #777;
   cursor: not-allowed;
+}
+
+.campo-copiar {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.campo-copiar input {
+  margin-top: 0;
+}
+
+.campo-copiar button {
+  background: #2D1B4E;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0 14px;
 }
 
 .fila-doble { 
@@ -727,6 +767,24 @@ header h1 {
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.btn-orden-tabla {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 800;
+  gap: 5px;
+  padding: 0;
+  text-transform: uppercase;
+}
+
+.btn-orden-tabla:hover {
+  color: #E4572E;
 }
 
 .tabla-admin select {

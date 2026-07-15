@@ -1,6 +1,12 @@
 ﻿// js/app.js
 import { auth, db } from './firebase-config.js';
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  EmailAuthProvider,
+  onAuthStateChanged,
+  reauthenticateWithCredential,
+  signOut,
+  updatePassword
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   addDoc,
   collection,
@@ -60,6 +66,7 @@ let proyectoEditandoId = null;
 let sprintEditandoId = null;
 let actividad = [];
 let unsubActividad = null;
+let cambioPasswordObligatorio = false;
 const subtareasPorTarea = new Map();
 
 const rolesConTareasGlobales = ['administrador', 'lider'];
@@ -538,7 +545,9 @@ onAuthStateChanged(auth, async (user) => {
     if (userDoc.exists() && userDoc.data().activo !== false) {
       const datosUsuario = userDoc.data();
       miRol = normalizarRol(datosUsuario.rol);
+      cambioPasswordObligatorio = datosUsuario.requiereCambioPassword === true;
       aplicarTemaOscuro(!!datosUsuario.temaOscuro);
+      await updateDoc(usuarioRef, { ultimoAcceso: serverTimestamp() });
     } else {
       alert("Tu usuario esta inactivo o fue eliminado por el administrador.");
       await signOut(auth);
@@ -580,6 +589,13 @@ onAuthStateChanged(auth, async (user) => {
   cargarActividad();
   escucharTareas();
   iniciarRefrescoTiempo();
+
+  if (cambioPasswordObligatorio) {
+    setTimeout(() => {
+      alert("Debes cambiar la contrasena temporal antes de continuar.");
+      window.abrirConfig();
+    }, 300);
+  }
 });
 
 function configurarToolbar() {
@@ -2305,6 +2321,14 @@ window.borrarInvitacion = async (invId) => {
 
 window.abrirConfig = async () => {
   document.getElementById('cfg-tema-oscuro').checked = temaOscuroUsuario;
+  document.getElementById('pwd-actual').value = '';
+  document.getElementById('pwd-nueva').value = '';
+  document.getElementById('pwd-confirmar').value = '';
+
+  const textoPasswordObligatorio = document.getElementById('texto-password-obligatorio');
+  if (textoPasswordObligatorio) {
+    textoPasswordObligatorio.classList.toggle('oculto', !cambioPasswordObligatorio);
+  }
 
   const seccionTablero = document.getElementById('seccion-config-tablero');
   if (seccionTablero) {
@@ -2321,10 +2345,73 @@ window.abrirConfig = async () => {
 };
 
 window.cerrarConfig = () => {
+  if (cambioPasswordObligatorio) {
+    alert("Primero debes cambiar la contrasena temporal.");
+    return;
+  }
+
   document.getElementById('modal-config').classList.add('oculto');
 };
 
+window.cambiarPasswordUsuario = async () => {
+  const actual = document.getElementById('pwd-actual').value;
+  const nueva = document.getElementById('pwd-nueva').value;
+  const confirmar = document.getElementById('pwd-confirmar').value;
+
+  if (!actual || !nueva || !confirmar) {
+    alert("Completa la contrasena actual, la nueva y la confirmacion.");
+    return;
+  }
+
+  if (nueva.length < 6) {
+    alert("La nueva contrasena debe tener al menos 6 caracteres.");
+    return;
+  }
+
+  if (nueva !== confirmar) {
+    alert("La nueva contrasena y la confirmacion no coinciden.");
+    return;
+  }
+
+  if (actual === nueva) {
+    alert("La nueva contrasena debe ser diferente a la actual.");
+    return;
+  }
+
+  try {
+    const credencial = EmailAuthProvider.credential(usuarioActual.email, actual);
+    await reauthenticateWithCredential(usuarioActual, credencial);
+    await updatePassword(usuarioActual, nueva);
+    await updateDoc(doc(db, "usuarios", usuarioActual.uid), {
+      requiereCambioPassword: false,
+      fechaCambioPassword: serverTimestamp()
+    });
+
+    cambioPasswordObligatorio = false;
+    document.getElementById('pwd-actual').value = '';
+    document.getElementById('pwd-nueva').value = '';
+    document.getElementById('pwd-confirmar').value = '';
+    document.getElementById('texto-password-obligatorio')?.classList.add('oculto');
+
+    await registrarActividad(tableroActualId, usuarioActual, ACCIONES.CONFIG,
+      'Contrasena actualizada por el usuario');
+
+    alert("Contrasena actualizada correctamente.");
+  } catch (error) {
+    console.error("Error al cambiar contrasena:", error);
+    const mensaje = error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password'
+      ? 'La contrasena actual no es correcta.'
+      : (error.message || error.code);
+    alert("No se pudo cambiar la contrasena: " + mensaje);
+  }
+};
+
 window.guardarConfig = async () => {
+  if (cambioPasswordObligatorio) {
+    alert("Primero debes cambiar la contrasena temporal.");
+    return;
+  }
+
   const temaOscuro = document.getElementById('cfg-tema-oscuro').checked;
   await updateDoc(doc(db, "usuarios", usuarioActual.uid), { temaOscuro });
   aplicarTemaOscuro(temaOscuro);

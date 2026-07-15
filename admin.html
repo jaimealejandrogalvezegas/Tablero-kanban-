@@ -37,12 +37,12 @@
         <table class="tabla-admin">
           <thead>
             <tr>
-              <th>Nombre</th>
-              <th>Correo</th>
-              <th>Rol</th>
-              <th>Estado</th>
-              <th>Ultimo acceso</th>
-              <th>Creacion</th>
+              <th><button class="btn-orden-tabla" onclick="ordenarUsuarios('nombre')">Nombre <span id="orden-nombre">↕</span></button></th>
+              <th><button class="btn-orden-tabla" onclick="ordenarUsuarios('email')">Correo <span id="orden-email">↕</span></button></th>
+              <th><button class="btn-orden-tabla" onclick="ordenarUsuarios('rol')">Rol <span id="orden-rol">↕</span></button></th>
+              <th><button class="btn-orden-tabla" onclick="ordenarUsuarios('estado')">Estado <span id="orden-estado">↕</span></button></th>
+              <th><button class="btn-orden-tabla" onclick="ordenarUsuarios('ultimoAcceso')">Ultimo acceso <span id="orden-ultimoAcceso">↕</span></button></th>
+              <th><button class="btn-orden-tabla" onclick="ordenarUsuarios('fechaCreacion')">Creacion <span id="orden-fechaCreacion">↕</span></button></th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -71,6 +71,31 @@
       <div class="botones-modal">
         <button onclick="crearUsuarioAdmin()">Crear usuario</button>
         <button onclick="cerrarModalAgregarUsuario()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-credenciales-usuario" class="modal oculto">
+    <div class="modal-contenido">
+      <h2>Usuario creado</h2>
+      <p class="texto-ayuda-modal">
+        Copia estos datos y entrégalos al usuario. Al iniciar sesión deberá cambiar la contraseña temporal.
+      </p>
+
+      <label>Correo</label>
+      <input type="text" id="credencial-email" readonly>
+
+      <label>Rol</label>
+      <input type="text" id="credencial-rol" readonly>
+
+      <label>Contraseña temporal</label>
+      <div class="campo-copiar">
+        <input type="text" id="credencial-password" readonly>
+        <button type="button" onclick="copiarPasswordTemporal()">Copiar</button>
+      </div>
+
+      <div class="botones-modal">
+        <button onclick="cerrarModalCredenciales()">Cerrar</button>
       </div>
     </div>
   </div>

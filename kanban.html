@@ -51,12 +51,12 @@
  
   <button id="btn-sprints" onclick="window.abrirModalSprints()">Sprints</button>
   <button id="btn-nueva-tarea" onclick="window.abrirModalTarea()">Nueva tarea</button>
-  <button id="btn-admin" onclick="window.abrirPanelAdmin()">Administrar usuarios</button>
   <button id="btn-etiquetas" onclick="window.abrirModalEtiquetas()">Etiquetas</button>
   <button onclick="window.abrirModalInvitaciones()">Invitaciones</button>
   <button onclick="window.abrirModalActividad()">Historial</button>
   <input type="text" id="filtro-tarea-texto" class="filtro-texto-toolbar" placeholder="Buscar tarea..." oninput="window.filtrarTareas()">
   <select id="filtro-usuario" onchange="window.filtrarTareas()"></select>
+  <button id="btn-admin" onclick="window.abrirPanelAdmin()">Administrar usuarios</button>
 </div>
 
 <div id="aviso-proyecto" class="aviso-proyecto oculto"></div>
@@ -331,6 +331,26 @@
         <input type="checkbox" id="cfg-notif-email" style="width:auto;margin:0">
         Recibir notificaciones por email
       </label>
+    </div>
+
+    <div id="seccion-password-usuario">
+      <h3>Cambiar contraseña</h3>
+      <p id="texto-password-obligatorio" class="texto-ayuda-modal oculto">
+        Debes cambiar la contraseña temporal antes de continuar.
+      </p>
+
+      <label>Contraseña actual</label>
+      <input type="password" id="pwd-actual" autocomplete="current-password">
+
+      <label>Nueva contraseña</label>
+      <input type="password" id="pwd-nueva" autocomplete="new-password">
+
+      <label>Confirmar nueva contraseña</label>
+      <input type="password" id="pwd-confirmar" autocomplete="new-password">
+
+      <div class="botones-modal">
+        <button type="button" onclick="cambiarPasswordUsuario()">Cambiar contraseña</button>
+      </div>
     </div>
 
     <div class="botones-modal">

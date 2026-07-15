@@ -9,6 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
@@ -21,6 +22,10 @@ import {
 
 let usuarios = [];
 let adminActual = null;
+let ordenUsuarios = {
+  campo: 'nombre',
+  direccion: 'asc'
+};
 
 function normalizarRol(rol) {
   if (rol === 'desarrollador') return 'miembro';
@@ -31,6 +36,12 @@ function fechaTexto(valor) {
   if (!valor) return '-';
   const fecha = valor.toDate ? valor.toDate() : new Date(valor);
   return Number.isNaN(fecha.getTime()) ? '-' : fecha.toLocaleString('es-PE');
+}
+
+function fechaOrden(valor) {
+  if (!valor) return 0;
+  const fecha = valor.toDate ? valor.toDate() : new Date(valor);
+  return Number.isNaN(fecha.getTime()) ? 0 : fecha.getTime();
 }
 
 function estadoUsuario(usuario) {
@@ -52,6 +63,36 @@ function obtenerNombreDesdeCorreo(email) {
 
 function usuarioExistePorCorreo(email) {
   return usuarios.some(usuario => (usuario.email || '').toLowerCase() === email);
+}
+
+function mostrarCredencialesTemporales(email, rol, passwordTemporal) {
+  document.getElementById('credencial-email').value = email;
+  document.getElementById('credencial-rol').value = rol;
+  document.getElementById('credencial-password').value = passwordTemporal;
+  document.getElementById('modal-credenciales-usuario').classList.remove('oculto');
+}
+
+function valorOrdenUsuario(usuario, campo) {
+  const nombre = usuario.nombre || (usuario.email ? usuario.email.split('@')[0] : 'Usuario');
+  const valores = {
+    nombre,
+    email: usuario.email || '',
+    rol: usuario.rol || '',
+    estado: estadoUsuario(usuario),
+    ultimoAcceso: fechaOrden(usuario.ultimoAcceso),
+    fechaCreacion: fechaOrden(usuario.fechaCreacion)
+  };
+  return valores[campo] ?? '';
+}
+
+function actualizarIndicadoresOrden() {
+  ['nombre', 'email', 'rol', 'estado', 'ultimoAcceso', 'fechaCreacion'].forEach(campo => {
+    const indicador = document.getElementById(`orden-${campo}`);
+    if (!indicador) return;
+    indicador.textContent = ordenUsuarios.campo === campo
+      ? (ordenUsuarios.direccion === 'asc' ? '↑' : '↓')
+      : '↕';
+  });
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -97,7 +138,16 @@ function renderizarUsuarios() {
       (usuario.email || '').toLowerCase().includes(busqueda);
     const coincideRol = filtroRol === 'todos' || usuario.rol === filtroRol;
     return coincideTexto && coincideRol;
-  }).sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+  }).sort((a, b) => {
+    const valorA = valorOrdenUsuario(a, ordenUsuarios.campo);
+    const valorB = valorOrdenUsuario(b, ordenUsuarios.campo);
+    const resultado = typeof valorA === 'number' && typeof valorB === 'number'
+      ? valorA - valorB
+      : String(valorA).localeCompare(String(valorB), 'es', { sensitivity: 'base' });
+    return ordenUsuarios.direccion === 'asc' ? resultado : -resultado;
+  });
+
+  actualizarIndicadoresOrden();
 
   if (filtrados.length === 0) {
     lista.innerHTML = '<tr><td colspan="7">No hay usuarios para mostrar.</td></tr>';
@@ -126,9 +176,18 @@ function renderizarUsuarios() {
             <button class="btn-reactivar-usuario" onclick="reactivarUsuario('${usuario.id}', '${usuario.email || ''}')">
               Reactivar
             </button>
+            <button class="btn-eliminar-usuario" onclick="eliminarRegistroUsuario('${usuario.id}', '${usuario.email || ''}')">
+              Eliminar registro
+            </button>
           ` : `
+            <button class="btn-reactivar-usuario" onclick="mostrarLimiteResetPassword('${usuario.email || ''}')">
+              Reset clave
+            </button>
             <button class="btn-eliminar-usuario" onclick="desactivarUsuario('${usuario.id}', '${usuario.email || ''}')">
               Desactivar
+            </button>
+            <button class="btn-eliminar-usuario" onclick="eliminarRegistroUsuario('${usuario.id}', '${usuario.email || ''}')">
+              Eliminar registro
             </button>
           `}
         </td>
@@ -138,6 +197,15 @@ function renderizarUsuarios() {
 }
 
 window.filtrarUsuariosAdmin = () => {
+  renderizarUsuarios();
+};
+
+window.ordenarUsuarios = (campo) => {
+  if (ordenUsuarios.campo === campo) {
+    ordenUsuarios.direccion = ordenUsuarios.direccion === 'asc' ? 'desc' : 'asc';
+  } else {
+    ordenUsuarios = { campo, direccion: 'asc' };
+  }
   renderizarUsuarios();
 };
 
@@ -186,6 +254,7 @@ window.crearUsuarioAdmin = async () => {
       rol,
       activo: true,
       estado: "activo",
+      requiereCambioPassword: true,
       creadoPorUid: adminActual.uid,
       creadoPorEmail: adminActual.email,
       fechaCreacion: serverTimestamp(),
@@ -193,13 +262,7 @@ window.crearUsuarioAdmin = async () => {
     });
 
     cerrarModalAgregarUsuario();
-    alert(
-      "Usuario creado correctamente.\n\n" +
-      `Correo: ${email}\n` +
-      `Rol: ${rol}\n` +
-      `Contrasena temporal: ${passwordTemporal}\n\n` +
-      "Entrega esa contrasena al usuario para que pueda iniciar sesion."
-    );
+    mostrarCredencialesTemporales(email, rol, passwordTemporal);
   } catch (error) {
     if (usuarioAuthCreado) {
       await deleteUser(usuarioAuthCreado).catch((deleteError) => {
@@ -214,9 +277,39 @@ window.crearUsuarioAdmin = async () => {
   }
 };
 
+window.copiarPasswordTemporal = async () => {
+  const input = document.getElementById('credencial-password');
+  input.focus();
+  input.select();
+
+  try {
+    await navigator.clipboard.writeText(input.value);
+    alert("Contrasena temporal copiada.");
+  } catch (error) {
+    document.execCommand('copy');
+    alert("Contrasena seleccionada. Si no se copio automaticamente, presiona Ctrl + C.");
+  }
+};
+
+window.cerrarModalCredenciales = () => {
+  document.getElementById('modal-credenciales-usuario').classList.add('oculto');
+  document.getElementById('credencial-email').value = '';
+  document.getElementById('credencial-rol').value = '';
+  document.getElementById('credencial-password').value = '';
+};
+
 window.cambiarRol = async (userId, nuevoRol) => {
   await updateDoc(doc(db, "usuarios", userId), { rol: nuevoRol });
   alert("Rol actualizado");
+};
+
+window.mostrarLimiteResetPassword = (email) => {
+  const usuario = email ? ` para ${email}` : '';
+  alert(
+    `No se puede restablecer la contrasena${usuario} desde este frontend.\n\n` +
+    "Para generar una nueva contrasena temporal real se necesita Firebase Admin SDK en un backend o Cloud Function. " +
+    "En Firebase normalmente eso requiere configurar un entorno backend/plan Blaze."
+  );
 };
 
 window.desactivarUsuario = async (userId, email) => {
@@ -237,6 +330,21 @@ window.desactivarUsuario = async (userId, email) => {
     desactivadoPorEmail: adminActual.email
   });
   alert("Usuario desactivado.");
+};
+
+window.eliminarRegistroUsuario = async (userId, email) => {
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    alert("No puedes eliminar tu propio registro desde este panel.");
+    return;
+  }
+
+  const texto = email ? `Eliminar el registro de ${email}?` : 'Eliminar este registro?';
+  if (!confirm(texto + "\n\nSe quitara de la lista de usuarios. Si intenta iniciar sesion, el sistema rechazara el acceso porque ya no tendra registro activo.")) {
+    return;
+  }
+
+  await deleteDoc(doc(db, "usuarios", userId));
+  alert("Registro eliminado de la lista de usuarios.");
 };
 
 window.reactivarUsuario = async (userId, email) => {
