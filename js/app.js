@@ -117,26 +117,34 @@ function proyectosVisibles() {
 
 function proyectosAsignadosDesdeTareas() {
   if (!usuarioActual || puedeVerTodo()) return [];
-  const tareasBase = [...tareasAsignadasUsuario, ...tareas];
+  const tareasBase = tareasPropiasBase();
   const ids = new Set(
     tareasBase
-      .filter(t => t.proyectoId && (tareaEsPropia(t) || !puedeVerTodo()))
+      .filter(t => t.proyectoId)
       .map(t => t.proyectoId)
   );
-  return Array.from(ids).map(id => ({
-    id,
-    nombre: `Proyecto asignado ${id.slice(0, 6)}`,
-    descripcion: '',
-    estado: 'activo',
-    fechaInicio: '',
-    fechaFin: '',
-    responsableUid: '',
-    responsableEmail: '',
-    miembrosUids: [usuarioActual.uid],
-    miembrosEmails: [usuarioActual.email],
-    capacidadHoras: 0,
-    soloReferencia: true
-  }));
+  return Array.from(ids).map(id => {
+    const tareasProyecto = tareasBase.filter(t => t.proyectoId === id);
+    const resumen = resumenAsignacionDesdeTareas(tareasProyecto);
+    return {
+      id,
+      nombre: resumen.titulos[0] || 'Sin titulo',
+      descripcion: '',
+      estado: 'activo',
+      fechaInicio: '',
+      fechaFin: resumen.fechaLimiteTexto,
+      responsableUid: '',
+      responsableEmail: resumen.responsableTexto,
+      miembrosUids: [usuarioActual.uid],
+      miembrosEmails: [usuarioActual.email],
+      capacidadHoras: 0,
+      soloReferencia: true,
+      creadoPorEmail: resumen.creadorTexto,
+      tareasAsignadasTexto: resumen.titulos.slice(0, 3).join(', '),
+      colaboradoresTexto: resumen.colaboradoresTexto,
+      miembrosTexto: resumen.miembrosTexto
+    };
+  });
 }
 
 function asegurarProyectoVisibleSeleccionado() {
@@ -231,6 +239,36 @@ function textoAsignado(tarea) {
 function textoColaboradores(tarea) {
   const nombres = usuariosPorUids(tarea.colaboradoresUids || []).map(nombreUsuario);
   return nombres.length ? nombres.join(', ') : '';
+}
+
+function truncarTexto(texto, max = 42) {
+  const valor = String(texto || '').trim();
+  if (valor.length <= max) return valor;
+  return valor.slice(0, max - 3).trimEnd() + '...';
+}
+
+function tareasPropiasBase() {
+  const mapa = new Map();
+  [...tareasAsignadasUsuario, ...tareas].forEach(t => {
+    if (t && t.id && tareaEsPropia(t)) mapa.set(t.id, t);
+  });
+  return Array.from(mapa.values());
+}
+
+function resumenAsignacionDesdeTareas(listaTareas) {
+  const titulos = listaTareas.map(t => t.titulo).filter(Boolean);
+  const creadores = Array.from(new Set(listaTareas.map(t => t.creadoPorEmail).filter(Boolean)));
+  const responsables = Array.from(new Set(listaTareas.map(t => textoAsignado(t)).filter(Boolean)));
+  const colaboradores = Array.from(new Set(listaTareas.flatMap(t => (textoColaboradores(t) || '').split(', ').filter(Boolean))));
+  const fechasLimite = Array.from(new Set(listaTareas.map(t => t.fechaLimite).filter(Boolean))).sort();
+  return {
+    titulos,
+    creadorTexto: creadores.length ? creadores.join(', ') : '-',
+    responsableTexto: responsables.length ? responsables.join(', ') : '-',
+    colaboradoresTexto: colaboradores.length ? colaboradores.join(', ') : '-',
+    miembrosTexto: Array.from(new Set([usuarioActual.email, ...colaboradores].filter(Boolean))).join(', '),
+    fechaLimiteTexto: fechasLimite.length ? fechasLimite[fechasLimite.length - 1] : '-'
+  };
 }
 
 async function notificarUsuario(usuarioId, tipo, referenciaId, mensaje) {
@@ -384,26 +422,34 @@ function sprintsVisibles() {
 
 function sprintsAsignadosDesdeTareas() {
   if (!usuarioActual || puedeVerTodo()) return [];
-  const tareasBase = [...tareasAsignadasUsuario, ...tareas];
+  const tareasBase = tareasPropiasBase();
   const ids = new Set(
     tareasBase
-      .filter(t => t.sprintId && (tareaEsPropia(t) || !puedeVerTodo()))
+      .filter(t => t.sprintId)
       .map(t => t.sprintId)
   );
-  return Array.from(ids).map(id => ({
-    id,
-    nombre: `Sprint asignado ${id.slice(0, 6)}`,
-    objetivo: '',
-    estado: 'activo',
-    fechaInicio: '',
-    fechaFin: '',
-    responsableUid: '',
-    responsableEmail: '',
-    participantesUids: [usuarioActual.uid],
-    participantesEmails: [usuarioActual.email],
-    capacidadHoras: 0,
-    soloReferencia: true
-  }));
+  return Array.from(ids).map(id => {
+    const tareasSprint = tareasBase.filter(t => t.sprintId === id);
+    const resumen = resumenAsignacionDesdeTareas(tareasSprint);
+    return {
+      id,
+      nombre: resumen.titulos[0] || 'Sin titulo',
+      objetivo: `Tareas asignadas: ${resumen.titulos.slice(0, 3).join(', ')}`,
+      estado: 'activo',
+      fechaInicio: '',
+      fechaFin: resumen.fechaLimiteTexto,
+      responsableUid: '',
+      responsableEmail: resumen.responsableTexto,
+      participantesUids: [usuarioActual.uid],
+      participantesEmails: [usuarioActual.email],
+      capacidadHoras: 0,
+      soloReferencia: true,
+      creadoPorEmail: resumen.creadorTexto,
+      tareasAsignadasTexto: resumen.titulos.slice(0, 3).join(', '),
+      colaboradoresTexto: resumen.colaboradoresTexto,
+      miembrosTexto: resumen.miembrosTexto
+    };
+  });
 }
 
 function usuarioParticipaEnTarea(tarea, uid) {
@@ -538,11 +584,13 @@ function configurarToolbar() {
   const btnAdmin = document.getElementById('btn-admin');
   const filtroUsuario = document.getElementById('filtro-usuario');
   const btnConfig = document.getElementById('btn-config');
+  const btnEtiquetas = document.getElementById('btn-etiquetas');
 
   btnNuevaTarea.style.display = puedeCrearTareas() ? 'inline-flex' : 'none';
   btnAdmin.style.display = esAdmin() ? 'inline-flex' : 'none';
   filtroUsuario.style.display = puedeVerTodo() ? 'block' : 'none';
   if (btnConfig) btnConfig.style.display = 'inline-flex';
+  if (btnEtiquetas) btnEtiquetas.style.display = (esAdmin() || esLider()) ? 'inline-flex' : 'none';
   actualizarEstadoProyectoActivo();
 
 }
@@ -1781,32 +1829,39 @@ function renderizarListaSprints() {
     return;
   }
   const proyectoCerrado = proyectoEstaCerrado();
-  lista.innerHTML = sprintsFiltrados.map(s => `
-    <div class="sprint-item">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <strong>${s.nombre}</strong>
-        <span class="badge-sprint">${s.estado}${s.soloReferencia ? ' · asignado por tarea' : ''}</span>
+  lista.innerHTML = sprintsFiltrados.map(s => {
+    const nombreSprint = truncarTexto(s.nombre || 'Sin nombre');
+    const asignadoPor = s.creadoPorEmail || s.asignadoPorEmail || s.responsableEmail || '-';
+    const responsable = textoResponsableSprint(s);
+    const miembros = s.soloReferencia ? (s.miembrosTexto || textoParticipantesSprint(s)) : textoParticipantesSprint(s);
+    const fechaLimite = s.fechaFin || s.fechaLimite || '-';
+    return `
+      <div class="sprint-item">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Sprint "${nombreSprint}"</strong>
+          <span class="badge-sprint">${s.estado}</span>
+        </div>
+        ${s.objetivo ? `<p class="sprint-objetivo">${s.objetivo}</p>` : ''}
+        <div class="sprint-detalle">
+          <span>Asignado por: ${asignadoPor}</span>
+          <span>Responsable: ${responsable}</span>
+          <span>Miembros: ${miembros}</span>
+          <span>Fecha limite del sprint: ${fechaLimite}</span>
+        </div>
+        <div class="sprint-detalle">
+          <span>${metricasSprint(s.id).total} tareas</span>
+          <span>${metricasSprint(s.id).completadas} completadas</span>
+          <span>${metricasSprint(s.id).avance}% avance</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.editarSprint('${s.id}')">Editar</button>` : ''}
+          ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.cambiarEstadoSprint('${s.id}', 'activo')">Activar</button>` : ''}
+          ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.cambiarEstadoSprint('${s.id}', 'cerrado')">Cerrar</button>` : ''}
+          ${esAdmin() ? `<button class="mock-btn" style="color:red;border-color:red" onclick="window.borrarSprint('${s.id}', '${s.nombre}')">Eliminar</button>` : ''}
+        </div>
       </div>
-      <span style="font-size:12px;color:#999">${s.fechaInicio} - ${s.fechaFin}</span>
-      ${s.objetivo ? `<p class="sprint-objetivo">${s.objetivo}</p>` : ''}
-      <div class="sprint-detalle">
-        <span>Responsable: ${textoResponsableSprint(s)}</span>
-        <span>Participantes: ${textoParticipantesSprint(s)}</span>
-        <span>Capacidad: ${s.capacidadHoras || 0}h</span>
-      </div>
-      <div class="sprint-detalle">
-        <span>${metricasSprint(s.id).total} tareas</span>
-        <span>${metricasSprint(s.id).completadas} completadas</span>
-        <span>${metricasSprint(s.id).avance}% avance</span>
-      </div>
-      <div style="display:flex;gap:6px;margin-top:6px">
-        ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.editarSprint('${s.id}')">Editar</button>` : ''}
-        ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.cambiarEstadoSprint('${s.id}', 'activo')">Activar</button>` : ''}
-        ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.cambiarEstadoSprint('${s.id}', 'cerrado')">Cerrar</button>` : ''}
-        ${esAdmin() ? `<button class="mock-btn" style="color:red;border-color:red" onclick="window.borrarSprint('${s.id}', '${s.nombre}')">Eliminar</button>` : ''}
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 window.filtrarSprints = () => {
@@ -2274,15 +2329,19 @@ function renderizarListaProyectos() {
 
   cont.innerHTML = visibles.map(p => {
     const activo = p.id === proyectoActivoId;
+    const nombreProyecto = truncarTexto(p.nombre || 'Sin nombre');
+    const asignadoPor = p.creadoPorEmail || p.asignadoPorEmail || p.responsableEmail || '-';
+    const responsable = textoResponsableProyecto(p);
+    const miembros = p.soloReferencia ? (p.miembrosTexto || textoMiembrosProyecto(p)) : textoMiembrosProyecto(p);
+    const fechaLimite = p.fechaFin || p.fechaLimite || '-';
     return `
       <div class="proyecto-dropdown-item ${activo ? 'activo' : ''}" onclick="window.seleccionarProyecto('${p.id}')">
         <div>
-          <strong>${p.nombre}</strong>
-          <span class="proyecto-estado">${p.estado}${p.soloReferencia ? ' · asignado por tarea' : ''}</span>
-          <span class="proyecto-estado">${p.fechaInicio || '-'} - ${p.fechaFin || '-'}</span>
-          <span class="proyecto-estado">Resp: ${textoResponsableProyecto(p)}</span>
-          <span class="proyecto-estado">Miembros: ${textoMiembrosProyecto(p)}</span>
-          <span class="proyecto-estado">Capacidad: ${p.capacidadHoras || 0}h</span>
+          <strong>Proyecto "${nombreProyecto}"</strong>
+          <span class="proyecto-estado">Asignado por: ${asignadoPor}</span>
+          <span class="proyecto-estado">Responsable: ${responsable}</span>
+          <span class="proyecto-estado">Miembros: ${miembros}</span>
+          <span class="proyecto-estado">Fecha limite del proyecto: ${fechaLimite}</span>
         </div>
         <div class="proyecto-dropdown-acciones">
           ${gestion ? `<span title="Editar" onclick="event.stopPropagation(); window.editarProyectoUI('${p.id}')">Editar</span>` : ''}
