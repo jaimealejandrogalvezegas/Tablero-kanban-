@@ -209,4 +209,11 @@ Capacidad: 120 horas
 
 ## Autor
 
-Proyecto desarrollado por Jaime Galvez para la gestion de un tablero Kanban orientado al area de Arquitectura TI.
+Proyecto desarrollado por Jaime Galvez y Ari Tipula para la gestion de un tablero Kanban orientado al area de Arquitectura TI.
+
+## Derechos de autor
+
+© 2026 Jaime Galvez y Ari Tipula. Todos los derechos reservados.
+
+Universidad Nacional Federico Villarreal  
+Lima, Peru - 2026
