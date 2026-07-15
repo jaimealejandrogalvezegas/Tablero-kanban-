@@ -33,16 +33,31 @@
     </div>
   </header>
 
-  <div class="toolbar">
-    <button id="btn-nueva-tarea" onclick="abrirModalTarea()">Nueva tarea</button>
-    <button id="btn-admin" onclick="abrirPanelAdmin()">Administrar usuarios</button>
-    <button id="btn-sprints" onclick="abrirModalSprints()">Sprints</button>
-    <button id="btn-etiquetas" onclick="abrirModalEtiquetas()">Etiquetas</button>
-    <button id="btn-invitaciones" onclick="abrirModalInvitaciones()">Invitaciones</button>
-    <select id="filtro-usuario" onchange="filtrarTareas()">
-      <option value="todos">Todos los usuarios</option>
-    </select>
+  <div class="toolbar" style="position:relative;">
+ 
+  <div style="position:relative; display:inline-block;">
+    <button id="btn-proyectos" onclick="window.toggleDropdownProyectos()">
+      <span id="btn-nombre-proyecto">Proyectos</span> ▾
+    </button>
+ 
+    <div id="dropdown-proyectos" class="dropdown-proyectos oculto">
+      <button id="btn-crear-proyecto-dropdown" class="btn-crear-proyecto" onclick="window.abrirModalCrearProyecto()">
+        + Crear proyecto
+      </button>
+      <div id="lista-proyectos-dropdown"></div>
+    </div>
   </div>
+ 
+  <button id="btn-sprints" onclick="window.abrirModalSprints()">Sprints</button>
+  <button id="btn-nueva-tarea" onclick="window.abrirModalTarea()">Nueva tarea</button>
+  <button id="btn-admin" onclick="window.abrirPanelAdmin()">Administrar usuarios</button>
+  <button onclick="window.abrirModalEtiquetas()">Etiquetas</button>
+  <button onclick="window.abrirModalInvitaciones()">Invitaciones</button>
+  <button onclick="window.abrirModalActividad()">Historial</button>
+  <select id="filtro-usuario" onchange="window.filtrarTareas()"></select>
+</div>
+
+<div id="aviso-proyecto" class="aviso-proyecto oculto"></div>
 
   <main class="tablero">
     <div class="columna" data-estado="pendiente" ondrop="soltar(event)" ondragover="permitirSoltar(event)">
@@ -66,49 +81,73 @@
   </section>
 
   <div id="modal-tarea" class="modal oculto">
-    <div class="modal-contenido">
+    <div class="modal-contenido modal-tarea-contenido">
       <h2 id="modal-titulo">Nueva tarea</h2>
 
-      <label>Titulo *</label>
-      <input type="text" id="inp-titulo" required>
+      <div class="tarea-form-grid">
+        <section>
+          <label>Titulo *</label>
+          <input type="text" id="inp-titulo" required>
 
-      <label>Descripcion</label>
-      <textarea id="inp-descripcion" rows="3"></textarea>
+          <label>Descripcion</label>
+          <textarea id="inp-descripcion" rows="3"></textarea>
 
-      <div class="fila-doble">
-        <div>
-          <label>Fecha limite</label>
-          <input type="date" id="inp-fecha">
-        </div>
-        <div>
-          <label>Prioridad</label>
-          <select id="inp-prioridad">
-            <option value="baja">Baja</option>
-            <option value="media" selected>Media</option>
-            <option value="alta">Alta</option>
+          <div class="fila-doble">
+            <div>
+              <label>Fecha limite</label>
+              <input type="date" id="inp-fecha">
+            </div>
+            <div>
+              <label>Prioridad</label>
+              <select id="inp-prioridad">
+                <option value="baja">Baja</option>
+                <option value="media" selected>Media</option>
+                <option value="alta">Alta</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fila-doble">
+            <div>
+              <label>Tipo</label>
+              <select id="inp-tipo">
+                <option value="tarea">Tarea</option>
+                <option value="bug">Bug</option>
+                <option value="mejora">Mejora</option>
+                <option value="investigacion">Investigación</option>
+              </select>
+            </div>
+            <div>
+              <label>Tiempo estimado (horas)</label>
+              <input type="number" id="inp-tiempo-estimado" min="0" step="0.5" placeholder="Ej: 8">
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <label>Asignado a</label>
+          <select id="inp-asignado">
+            <option value="">-- Sin asignar --</option>
           </select>
-        </div>
-      </div>
+          <label>Colaboradores</label>
+          <select id="inp-colaboradores" multiple size="3"></select>
+          <label>Sprint</label>
+          <select id="inp-sprint">
+            <option value="">-- Sin sprint --</option>
+          </select>
 
-      <label>Asignado a</label>
-      <select id="inp-asignado">
-        <option value="">-- Sin asignar --</option>
-      </select>
-      <label>Sprint</label>
-      <select id="inp-sprint">
-        <option value="">-- Sin sprint --</option>
-      </select>
+          <label>Etiquetas</label>
+          <div id="inp-etiquetas-container" class="etiquetas-selector"></div>
+          <label>Notas</label>
+          <textarea id="inp-notas" rows="2" placeholder="Observaciones..."></textarea>
 
-      <label>Etiquetas</label>
-      <div id="inp-etiquetas-container" class="etiquetas-selector"></div>
-      <label>Notas</label>
-      <textarea id="inp-notas" rows="2" placeholder="Observaciones..."></textarea>
-
-      <label>Subtareas</label>
-      <div id="subtareas-container"></div>
-      <div class="subtarea-input">
-        <input type="text" id="inp-subtarea" placeholder="Ej: Redactar documento">
-        <button type="button" onclick="agregarSubtarea()">+</button>
+          <label>Subtareas</label>
+          <div id="subtareas-container"></div>
+          <div class="subtarea-input">
+            <input type="text" id="inp-subtarea" placeholder="Ej: Redactar documento">
+            <button type="button" onclick="agregarSubtarea()">+</button>
+          </div>
+        </section>
       </div>
 
       <div id="seccion-adjuntos" class="oculto">
@@ -147,6 +186,9 @@
     <label>Nombre del sprint</label>
     <input type="text" id="inp-sprint-nombre" placeholder="Ej: Sprint 1 - Julio">
 
+    <label>Objetivo</label>
+    <textarea id="inp-sprint-objetivo" rows="2" placeholder="Ej: Diseñar módulo de autenticación"></textarea>
+
     <div class="fila-doble">
       <div>
         <label>Fecha inicio</label>
@@ -158,8 +200,24 @@
       </div>
     </div>
 
+    <div class="fila-doble">
+      <div>
+        <label>Responsable</label>
+        <select id="inp-sprint-responsable">
+          <option value="">-- Sin responsable --</option>
+        </select>
+      </div>
+      <div>
+        <label>Capacidad (horas)</label>
+        <input type="number" id="inp-sprint-capacidad" min="0" step="1" placeholder="Ej: 160">
+      </div>
+    </div>
+
+    <label>Participantes</label>
+    <select id="inp-sprint-participantes" multiple size="4"></select>
+
     <div class="botones-modal">
-      <button onclick="guardarSprint()">Crear sprint</button>
+      <button id="btn-guardar-sprint" onclick="guardarSprint()">Crear sprint</button>
       <button onclick="cerrarModalSprints()">Cancelar</button>
     </div>
 
@@ -189,12 +247,39 @@
 <div id="modal-invitaciones" class="modal oculto">
   <div class="modal-contenido">
     <h2>Invitaciones</h2>
+    <p id="texto-destino-invitacion" class="texto-ayuda-modal"></p>
 
     <label>Correo a invitar</label>
     <input type="email" id="inp-invitacion-email" placeholder="usuario@kg.com.pe">
 
+    <div class="fila-doble">
+      <div>
+        <label>Tipo de colaboración</label>
+        <select id="inp-invitacion-alcance" onchange="window.actualizarDestinoInvitacion()">
+          <option value="proyecto">Proyecto</option>
+          <option value="sprint">Sprint</option>
+          <option value="tarea">Tarea</option>
+        </select>
+      </div>
+      <div>
+        <label>Rol sugerido</label>
+        <select id="inp-invitacion-rol">
+          <option value="miembro">Miembro</option>
+          <option value="colaborador">Colaborador</option>
+          <option value="revisor">Revisor</option>
+          <option value="lider">Lider</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Destino</label>
+    <select id="inp-invitacion-destino"></select>
+
+    <label>Motivo</label>
+    <textarea id="inp-invitacion-motivo" rows="2" placeholder="Ej: Necesito apoyo en validaciones de seguridad"></textarea>
+
     <div class="botones-modal">
-      <button onclick="enviarInvitacion()">Enviar invitación</button>
+      <button onclick="enviarInvitacion()">Registrar solicitud</button>
       <button onclick="cerrarModalInvitaciones()">Cancelar</button>
     </div>
 
@@ -229,6 +314,77 @@
     <div class="botones-modal">
       <button onclick="guardarConfig()">Guardar ajustes</button>
       <button onclick="cerrarConfig()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-actividad" class="modal oculto">
+  <div class="modal-contenido modal-actividad">
+    <div class="modal-header-linea">
+      <h2>Historial de eventos</h2>
+      <button type="button" onclick="window.exportarActividad()">Exportar CSV</button>
+    </div>
+
+    <div class="actividad-filtros">
+      <div>
+        <label>Desde</label>
+        <input type="datetime-local" id="filtro-actividad-desde" onchange="window.filtrarActividad()">
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="datetime-local" id="filtro-actividad-hasta" onchange="window.filtrarActividad()">
+      </div>
+      <button type="button" onclick="window.limpiarFiltroActividad()">Limpiar</button>
+    </div>
+
+    <div id="lista-actividad" class="lista-actividad"></div>
+
+    <div class="botones-modal">
+      <button onclick="window.cerrarModalActividad()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-crear-proyecto" class="modal oculto">
+  <div class="modal-contenido">
+    <h2>Crear nuevo proyecto</h2>
+ 
+    <label>Nombre del proyecto</label>
+    <input type="text" id="inp-proyecto-nombre" placeholder="Ej: Proyecto Alpha">
+ 
+    <label>Descripcion</label>
+    <textarea id="inp-proyecto-descripcion" rows="2" placeholder="Descripcion opcional"></textarea>
+
+    <div class="fila-doble">
+      <div>
+        <label>Fecha inicio</label>
+        <input type="date" id="inp-proyecto-fechainicio">
+      </div>
+      <div>
+        <label>Fecha fin estimada</label>
+        <input type="date" id="inp-proyecto-fechafin">
+      </div>
+    </div>
+
+    <label>Responsable</label>
+    <select id="inp-proyecto-responsable">
+      <option value="">-- Sin responsable --</option>
+    </select>
+
+    <div class="fila-doble">
+      <div>
+        <label>Capacidad total (horas)</label>
+        <input type="number" id="inp-proyecto-capacidad" min="0" step="1" placeholder="Ej: 480">
+      </div>
+      <div>
+        <label>Miembros</label>
+        <select id="inp-proyecto-miembros" multiple size="4"></select>
+      </div>
+    </div>
+ 
+    <div class="botones-modal">
+      <button id="btn-guardar-proyecto" onclick="window.guardarNuevoProyecto()">Crear proyecto</button>
+      <button onclick="window.cerrarModalCrearProyecto()">Cancelar</button>
     </div>
   </div>
 </div>

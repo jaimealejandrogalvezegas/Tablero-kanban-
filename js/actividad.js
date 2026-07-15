@@ -26,6 +26,7 @@ export function escucharActividad(tableroId, callback) {
 // Registra una acción en el historial del tablero
 export async function registrarActividad(tableroId, usuario, accion, detalle, tareaId = null) {
   await addDoc(collection(db, "tableros", tableroId, "actividad"), {
+    tableroId,
     usuarioId: usuario.uid,
     usuarioEmail: usuario.email,
     usuarioNombre: usuario.email.split('@')[0],
@@ -42,6 +43,13 @@ export const ACCIONES = {
   TAREA_MOVIDA:   "tarea_movida",
   TAREA_EDITADA:  "tarea_editada",
   TAREA_ELIMINADA:"tarea_eliminada",
+  SUBTAREA:       "subtarea_actualizada",
+  TIEMPO:         "tiempo_registrado",
+  ADJUNTO:        "adjunto_actualizado",
+  SPRINT:         "sprint_actualizado",
+  PROYECTO:       "proyecto_actualizado",
+  CONFIG:         "configuracion_actualizada",
+  INVITACION:     "invitacion_registrada",
   COMENTARIO:     "comentario_agregado",
   USUARIO_UNIDO:  "usuario_unido"
 };
