@@ -101,8 +101,7 @@ function proyectoEsVisibleParaMi(proyecto) {
     proyecto.responsableEmail === usuarioActual.email ||
     (proyecto.miembrosUids || []).includes(usuarioActual.uid) ||
     (proyecto.miembrosEmails || []).includes(usuarioActual.email) ||
-    tareasAsignadasUsuario.some(t => t.proyectoId === proyecto.id && tareaEsPropia(t)) ||
-    sprints.some(s => s.proyectoId === proyecto.id && sprintEsVisibleParaMi(s));
+    tareasAsignadasUsuario.some(t => t.proyectoId === proyecto.id && tareaEsPropia(t));
 }
 
 function proyectosVisibles() {
@@ -686,10 +685,7 @@ function escucharTareas() {
   tareasAsignadasUsuario = [];
 
   if (puedeVerTodo()) {
-    let q = query(collection(db, "tareas"), orderBy("fechaCreacion", "desc"));
-    if (proyectoActivoId) {
-      q = query(collection(db, "tareas"), where("proyectoId", "==", proyectoActivoId), orderBy("fechaCreacion", "desc"));
-    }
+    const q = query(collection(db, "tareas"), orderBy("fechaCreacion", "desc"));
     unsubTareas.push(onSnapshot(q, (snapshot) => {
       tareas = snapshot.docs.map(documento => ({ id: documento.id, ...documento.data() }));
       tareasAsignadasUsuario = tareas;
@@ -743,6 +739,10 @@ function tareasFiltradas() {
   const filtro = document.getElementById('filtro-usuario').value;
   const texto = (document.getElementById('filtro-tarea-texto')?.value || '').trim().toLowerCase();
   let lista = puedeVerTodo() ? tareas : tareas.filter(tareaEsPropia);
+
+  if (proyectoActivoId) {
+    lista = lista.filter(t => t.proyectoId === proyectoActivoId);
+  }
 
   if (puedeVerTodo() && filtro !== 'todos') {
     lista = lista.filter(t =>
@@ -1101,7 +1101,7 @@ window.guardarTarea = async () => {
       creadoPorUid: tareaActual ? tareaActual.creadoPorUid : usuarioActual.uid,
       creadoPorEmail: tareaActual ? tareaActual.creadoPorEmail : usuarioActual.email,
       fechaCreacion: tareaActual ? tareaActual.fechaCreacion : serverTimestamp(),
-      proyectoId: tareaActual ? (tareaActual.proyectoId || null) : (proyectoActivoId || null),
+      proyectoId: tareaActual ? (tareaActual.proyectoId || proyectoActivoId || null) : (proyectoActivoId || null),
       proyectoNombre: proyectoActivo?.nombre || tareaActual?.proyectoNombre || '',
       sprintNombre: sprintSeleccionado?.nombre || tareaActual?.sprintNombre || ''
     };
