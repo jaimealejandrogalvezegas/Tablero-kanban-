@@ -32,6 +32,7 @@ let tareas = [];
 let usuarios = [];
 let unsubTareas = [];
 let unsubUsuarios = null;
+let unsubUsuarioActual = null;
 let subtareasTemp = [];
 let tareaEditandoId = null;
 let usuarioActual = null;
@@ -323,6 +324,8 @@ function limpiarListeners() {
   unsubTareas = [];
   if (unsubUsuarios) unsubUsuarios();
   unsubUsuarios = null;
+  if (unsubUsuarioActual) unsubUsuarioActual();
+  unsubUsuarioActual = null;
   if (unsubActividad) unsubActividad();
   unsubActividad = null;
 }
@@ -341,23 +344,29 @@ onAuthStateChanged(auth, async (user) => {
     const usuarioRef = doc(db, "usuarios", user.uid);
     const userDoc = await getDoc(usuarioRef);
 
-    if (userDoc.exists()) {
+    if (userDoc.exists() && userDoc.data().activo !== false) {
       const datosUsuario = userDoc.data();
       miRol = normalizarRol(datosUsuario.rol);
       aplicarTemaOscuro(!!datosUsuario.temaOscuro);
     } else {
-      await setDoc(usuarioRef, {
-        email: user.email,
-        nombre: user.email.split('@')[0],
-        rol: 'invitado',
-        temaOscuro: false,
-        fechaCreacion: serverTimestamp()
-      });
-      miRol = 'invitado';
-      aplicarTemaOscuro(false);
+      alert("Tu usuario esta inactivo o fue eliminado por el administrador.");
+      await signOut(auth);
+      window.location.href = 'index.html';
+      return;
     }
+
+    unsubUsuarioActual = onSnapshot(usuarioRef, async (snap) => {
+      if (!snap.exists() || snap.data().activo === false) {
+        alert("Tu usuario fue desactivado por el administrador.");
+        await signOut(auth);
+        window.location.href = 'index.html';
+      }
+    });
   } catch (error) {
     console.error("Error al obtener rol:", error);
+    await signOut(auth);
+    window.location.href = 'index.html';
+    return;
   }
 
   document.getElementById('nombre-usuario').textContent = user.email;

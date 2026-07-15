@@ -3,12 +3,15 @@ import { auth, db } from './firebase-config.js';
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signOut,
   signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   doc,
+  getDoc,
   serverTimestamp,
-  setDoc
+  setDoc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 let registrandoUsuario = false;
@@ -30,6 +33,20 @@ function mensajeAuth(error) {
   return mensajes[error.code] || error.message;
 }
 
+function autorizacionId(email) {
+  return email.toLowerCase().replaceAll('/', '_');
+}
+
+async function obtenerAutorizacion(email) {
+  const ref = doc(db, "usuarios_autorizados", autorizacionId(email));
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+
+  const data = snap.data();
+  if (data.usado || data.email !== email) return null;
+  return { id: snap.id, ref, ...data };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const btnLogin = document.getElementById('btn-login');
   const btnRegistro = document.getElementById('btn-registro');
@@ -37,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputPassword = document.getElementById('password');
 
   btnRegistro.addEventListener('click', async () => {
-    const email = inputEmail.value.trim();
+    const email = inputEmail.value.trim().toLowerCase();
     const password = inputPassword.value;
 
     if (!email || !password) {
@@ -50,11 +67,25 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (!email.endsWith('@kg.com.pe')) {
+      alert("Solo se permiten correos corporativos @kg.com.pe.");
+      return;
+    }
+
     registrandoUsuario = true;
     btnRegistro.disabled = true;
     btnLogin.disabled = true;
 
     try {
+      const autorizacion = await obtenerAutorizacion(email);
+      if (!autorizacion) {
+        alert("Este correo no esta autorizado para registrarse. Solicita acceso al administrador.");
+        registrandoUsuario = false;
+        btnRegistro.disabled = false;
+        btnLogin.disabled = false;
+        return;
+      }
+
       console.log("Creando usuario en Auth...");
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
@@ -63,11 +94,19 @@ document.addEventListener('DOMContentLoaded', () => {
       await setDoc(doc(db, "usuarios", uid), {
         email,
         nombre: email.split('@')[0],
-        rol: "invitado",
-        fechaCreacion: serverTimestamp()
+        rol: autorizacion.rolInicial || "invitado",
+        activo: true,
+        fechaCreacion: serverTimestamp(),
+        ultimoAcceso: serverTimestamp()
       }, { merge: true });
 
-      alert("Cuenta creada. Tu rol es Invitado (solo visualizacion).");
+      await updateDoc(autorizacion.ref, {
+        usado: true,
+        usadoPorUid: uid,
+        fechaUso: serverTimestamp()
+      });
+
+      alert("Cuenta creada correctamente.");
       window.location.href = 'kanban.html';
     } catch (error) {
       console.error("Error Firebase Auth:", error.code, error.message);
@@ -79,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnLogin.addEventListener('click', async () => {
-    const email = inputEmail.value.trim();
+    const email = inputEmail.value.trim().toLowerCase();
     const password = inputPassword.value;
 
     if (!email || !password) {
@@ -88,7 +127,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const usuarioRef = doc(db, "usuarios", userCredential.user.uid);
+      const usuarioSnap = await getDoc(usuarioRef);
+
+      if (!usuarioSnap.exists() || usuarioSnap.data().activo === false) {
+        await signOut(auth);
+        alert("Tu usuario esta inactivo o fue eliminado por el administrador.");
+        return;
+      }
+
+      await setDoc(doc(db, "usuarios", userCredential.user.uid), {
+        ultimoAcceso: serverTimestamp()
+      }, { merge: true });
       window.location.href = 'kanban.html';
     } catch (error) {
       console.error("Error Firebase Auth:", error.code, error.message);

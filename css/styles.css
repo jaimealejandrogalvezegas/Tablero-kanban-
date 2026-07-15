@@ -634,6 +634,130 @@ header h1 {
   font-size: 14px;
 }
 
+.admin-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(45, 27, 78, 0.1);
+  margin-bottom: 22px;
+  padding: 18px;
+}
+
+.admin-section-header {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.admin-section-header h2 {
+  color: #2D1B4E;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.admin-section-header p {
+  color: #666;
+  font-size: 13px;
+}
+
+.admin-controles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.admin-controles input,
+.admin-controles select {
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  min-height: 40px;
+  padding: 9px 11px;
+}
+
+.admin-controles input {
+  flex: 1 1 280px;
+}
+
+.admin-controles select {
+  flex: 0 1 220px;
+}
+
+.tabla-admin-wrapper {
+  overflow-x: auto;
+}
+
+.tabla-admin {
+  border-collapse: collapse;
+  min-width: 900px;
+  width: 100%;
+}
+
+.tabla-admin th,
+.tabla-admin td {
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  padding: 10px 9px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tabla-admin th {
+  background: #f7f5fb;
+  color: #2D1B4E;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tabla-admin select {
+  border: 1px solid #d8d2e2;
+  border-radius: 6px;
+  min-width: 135px;
+  padding: 7px 8px;
+}
+
+.estado-usuario {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 9px;
+}
+
+.estado-usuario.activo {
+  background: #e7f6e8;
+  color: #1d6d2a;
+}
+
+.estado-usuario.inactivo {
+  background: #fff1de;
+  color: #8c520d;
+}
+
+.estado-usuario.sin-acceso {
+  background: #eceff3;
+  color: #596273;
+}
+
+.estado-usuario.desactivado {
+  background: #fce4e4;
+  color: #9b1c1c;
+}
+
+.btn-admin-primario {
+  background: linear-gradient(135deg, #2D1B4E, #4A2C7A);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
 .usuarios-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -696,6 +820,22 @@ header h1 {
 
 .btn-eliminar-usuario:hover {
   box-shadow: 0 3px 10px rgba(192, 57, 43, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-reactivar-usuario {
+  background: linear-gradient(135deg, #1d8f45, #27ae60);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 8px 12px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-reactivar-usuario:hover {
+  box-shadow: 0 3px 10px rgba(39, 174, 96, 0.25);
   transform: translateY(-1px);
 }
 
@@ -804,6 +944,11 @@ header h1 {
   .lista-fila {
     grid-template-columns: 180px 110px 100px 110px 150px 150px 100px 100px 100px 100px 130px;
     min-width: 1330px;
+  }
+
+  .admin-section-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .modal-contenido {
@@ -1274,6 +1419,7 @@ body.modo-oscuro .toolbar,
 body.modo-oscuro .modal-contenido,
 body.modo-oscuro .tarjeta,
 body.modo-oscuro .lista-tabla,
+body.modo-oscuro .admin-section,
 body.modo-oscuro .usuario-card {
   background: #202833;
   color: #e8edf5;
@@ -1300,13 +1446,16 @@ body.modo-oscuro .columna h2,
 body.modo-oscuro .tarjeta h3,
 body.modo-oscuro .modal-contenido h2,
 body.modo-oscuro .modal-contenido label,
-body.modo-oscuro .admin-header h2 {
+body.modo-oscuro .admin-header h2,
+body.modo-oscuro .admin-section-header h2,
+body.modo-oscuro .tabla-admin th {
   color: #f2f5fb;
 }
 
 body.modo-oscuro .tarjeta p,
 body.modo-oscuro .tarjeta-meta,
 body.modo-oscuro .admin-header p,
+body.modo-oscuro .admin-section-header p,
 body.modo-oscuro .usuario-card span,
 body.modo-oscuro .extra-texto,
 body.modo-oscuro .tiempo-valor,
@@ -1385,6 +1534,16 @@ body.modo-oscuro .lista-encabezado {
 
 body.modo-oscuro .lista-fila {
   border-color: #354153;
+}
+
+body.modo-oscuro .tabla-admin th,
+body.modo-oscuro .tabla-admin td {
+  background: #202833;
+  border-color: #354153;
+}
+
+body.modo-oscuro .tabla-admin th {
+  background: #18202b;
 }
 
 body.modo-oscuro .lista-titulo {

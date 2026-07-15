@@ -18,10 +18,84 @@
   <main class="admin-panel">
     <div class="admin-header">
       <h2>Gestion de usuarios</h2>
-      <p>Cambia los roles operativos del tablero. Las reglas de Firestore se actualizan desde Firebase Console.</p>
+      <p>Administra usuarios registrados, roles y correos autorizados para evitar registros no permitidos.</p>
     </div>
-    <div id="lista-usuarios" class="usuarios-grid"></div>
+
+    <section class="admin-section">
+      <div class="admin-controles">
+        <input type="text" id="buscar-usuario" placeholder="Buscar por nombre o correo..." oninput="filtrarUsuariosAdmin()">
+        <select id="filtro-rol-admin" onchange="filtrarUsuariosAdmin()">
+          <option value="todos">Todos los roles</option>
+          <option value="administrador">Administrador</option>
+          <option value="lider">Lider</option>
+          <option value="miembro">Miembro</option>
+          <option value="invitado">Invitado</option>
+        </select>
+      </div>
+      <div class="tabla-admin-wrapper">
+        <table class="tabla-admin">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Ultimo acceso</th>
+              <th>Creacion</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="lista-usuarios"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <div class="admin-section-header">
+        <div>
+          <h2>Correos autorizados</h2>
+          <p>Solo estos correos podran crear cuenta en Firebase Authentication.</p>
+        </div>
+        <button class="btn-admin-primario" onclick="abrirModalAutorizar()">Autorizar usuario</button>
+      </div>
+      <div class="tabla-admin-wrapper">
+        <table class="tabla-admin">
+          <thead>
+            <tr>
+              <th>Correo</th>
+              <th>Rol inicial</th>
+              <th>Estado</th>
+              <th>Autorizado por</th>
+              <th>Fecha</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="lista-autorizados"></tbody>
+        </table>
+      </div>
+    </section>
   </main>
+
+  <div id="modal-autorizar" class="modal oculto">
+    <div class="modal-contenido">
+      <h2>Autorizar usuario</h2>
+
+      <label>Correo corporativo</label>
+      <input type="email" id="authz-email" placeholder="usuario@kg.com.pe">
+
+      <label>Rol inicial</label>
+      <select id="authz-rol">
+        <option value="miembro">Miembro</option>
+        <option value="lider">Lider</option>
+        <option value="invitado">Invitado</option>
+      </select>
+
+      <div class="botones-modal">
+        <button onclick="guardarAutorizacion()">Autorizar</button>
+        <button onclick="cerrarModalAutorizar()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="js/admin.js"></script>
 </body>
