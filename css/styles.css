@@ -141,6 +141,14 @@ header h1 {
   min-width: 260px;
 }
 
+.filtro-texto-toolbar {
+  border: 2px solid #2D1B4E;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 210px;
+  padding: 10px 12px;
+}
+
 .aviso-proyecto {
   border: 1px solid #e4dcec;
   border-radius: 6px;
@@ -936,6 +944,11 @@ header h1 {
     width: 100%;
   }
 
+  .filtro-texto-toolbar {
+    min-width: 0;
+    width: 100%;
+  }
+
   .tablero,
   .admin-panel,
   .vista-lista {
@@ -1600,6 +1613,16 @@ body.modo-oscuro .notif-header button {
 
 .btn-crear-proyecto:hover {
   transform: translateY(-1px);
+}
+
+.buscador-dropdown,
+.buscador-modal {
+  border: 1px solid #d8d2e2;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  width: 100%;
 }
 
 #lista-proyectos-dropdown {

@@ -44,6 +44,7 @@
       <button id="btn-crear-proyecto-dropdown" class="btn-crear-proyecto" onclick="window.abrirModalCrearProyecto()">
         + Crear proyecto
       </button>
+      <input type="text" id="buscar-proyecto-dropdown" class="buscador-dropdown" placeholder="Buscar proyecto..." oninput="window.filtrarProyectosDropdown()">
       <div id="lista-proyectos-dropdown"></div>
     </div>
   </div>
@@ -54,6 +55,7 @@
   <button onclick="window.abrirModalEtiquetas()">Etiquetas</button>
   <button onclick="window.abrirModalInvitaciones()">Invitaciones</button>
   <button onclick="window.abrirModalActividad()">Historial</button>
+  <input type="text" id="filtro-tarea-texto" class="filtro-texto-toolbar" placeholder="Buscar tarea..." oninput="window.filtrarTareas()">
   <select id="filtro-usuario" onchange="window.filtrarTareas()"></select>
 </div>
 
@@ -232,6 +234,7 @@
     </div>
 
     <label style="margin-top: 16px;">Sprints existentes</label>
+    <input type="text" id="buscar-sprint" class="buscador-modal" placeholder="Buscar sprint..." oninput="window.filtrarSprints()">
     <div id="lista-sprints"></div>
   </div>
 </div>

@@ -87,7 +87,13 @@ function puedeCrearTareas() {
 }
 
 function proyectoActivo() {
-  return proyectoActivoId ? proyectos.find(p => p.id === proyectoActivoId) : null;
+  return proyectoActivoId ? proyectoPorId(proyectoActivoId) : null;
+}
+
+function proyectoPorId(proyectoId) {
+  return proyectos.find(p => p.id === proyectoId) ||
+    proyectosAsignadosDesdeTareas().find(p => p.id === proyectoId) ||
+    null;
 }
 
 function proyectoEsVisibleParaMi(proyecto) {
@@ -101,7 +107,35 @@ function proyectoEsVisibleParaMi(proyecto) {
 }
 
 function proyectosVisibles() {
-  return proyectos.filter(proyectoEsVisibleParaMi);
+  const mapa = new Map();
+  proyectos.filter(proyectoEsVisibleParaMi).forEach(p => mapa.set(p.id, p));
+  proyectosAsignadosDesdeTareas().forEach(p => {
+    if (!mapa.has(p.id)) mapa.set(p.id, p);
+  });
+  return Array.from(mapa.values());
+}
+
+function proyectosAsignadosDesdeTareas() {
+  if (!usuarioActual || puedeVerTodo()) return [];
+  const ids = new Set(
+    tareasAsignadasUsuario
+      .filter(t => t.proyectoId && tareaEsPropia(t))
+      .map(t => t.proyectoId)
+  );
+  return Array.from(ids).map(id => ({
+    id,
+    nombre: `Proyecto asignado ${id.slice(0, 6)}`,
+    descripcion: '',
+    estado: 'activo',
+    fechaInicio: '',
+    fechaFin: '',
+    responsableUid: '',
+    responsableEmail: '',
+    miembrosUids: [usuarioActual.uid],
+    miembrosEmails: [usuarioActual.email],
+    capacidadHoras: 0,
+    soloReferencia: true
+  }));
 }
 
 function asegurarProyectoVisibleSeleccionado() {
@@ -125,7 +159,7 @@ function proyectoEstaCerrado(proyecto = proyectoActivo()) {
 }
 
 function proyectoDeTarea(tarea) {
-  return tarea?.proyectoId ? proyectos.find(p => p.id === tarea.proyectoId) : null;
+  return tarea?.proyectoId ? proyectoPorId(tarea.proyectoId) : null;
 }
 
 function tareaEnProyectoCerrado(tarea) {
@@ -229,6 +263,34 @@ async function registrarCambiosAsignacion(tareaAnterior, tareaId, titulo, usuari
   }
 }
 
+async function sincronizarAsignacionConEstructura(proyectoId, sprintId, usuarioAsignado, colaboradoresDatos) {
+  const usuariosAsignados = [usuarioAsignado, ...colaboradoresDatos].filter(Boolean);
+  if (usuariosAsignados.length === 0) return;
+
+  const uids = usuariosAsignados.map(u => u.id).filter(Boolean);
+  const emails = usuariosAsignados.map(u => u.email).filter(Boolean);
+
+  if (proyectoId) {
+    const proyecto = proyectos.find(p => p.id === proyectoId && !p.soloReferencia);
+    if (proyecto) {
+      await actualizarProyecto(proyectoId, {
+        miembrosUids: Array.from(new Set([...(proyecto.miembrosUids || []), ...uids])),
+        miembrosEmails: Array.from(new Set([...(proyecto.miembrosEmails || []), ...emails]))
+      });
+    }
+  }
+
+  if (sprintId) {
+    const sprint = sprints.find(s => s.id === sprintId);
+    if (sprint) {
+      await actualizarSprint(sprintId, {
+        participantesUids: Array.from(new Set([...(sprint.participantesUids || []), ...uids])),
+        participantesEmails: Array.from(new Set([...(sprint.participantesEmails || []), ...emails]))
+      });
+    }
+  }
+}
+
 function fechaFirestoreAdate(valor) {
   if (!valor) return null;
   if (valor.toDate) return valor.toDate();
@@ -298,6 +360,20 @@ function horasTareasProyecto(proyectoId, excluirTareaId = null) {
 
 function sprintsDelProyecto(proyectoId) {
   return sprints.filter(s => s.proyectoId === proyectoId);
+}
+
+function sprintEsVisibleParaMi(sprint) {
+  if (puedeVerTodo()) return true;
+  if (!usuarioActual || !sprint) return false;
+  return sprint.responsableUid === usuarioActual.uid ||
+    sprint.responsableEmail === usuarioActual.email ||
+    (sprint.participantesUids || []).includes(usuarioActual.uid) ||
+    (sprint.participantesEmails || []).includes(usuarioActual.email) ||
+    tareasAsignadasUsuario.some(t => t.sprintId === sprint.id && tareaEsPropia(t));
+}
+
+function sprintsVisibles() {
+  return sprints.filter(sprintEsVisibleParaMi);
 }
 
 function usuarioParticipaEnTarea(tarea, uid) {
@@ -592,10 +668,29 @@ window.abrirPanelAdmin = () => {
 
 function tareasFiltradas() {
   const filtro = document.getElementById('filtro-usuario').value;
+  const texto = (document.getElementById('filtro-tarea-texto')?.value || '').trim().toLowerCase();
   let lista = puedeVerTodo() ? tareas : tareas.filter(tareaEsPropia);
 
   if (puedeVerTodo() && filtro !== 'todos') {
     lista = lista.filter(t => t.asignadoUid === filtro);
+  }
+
+  if (texto) {
+    lista = lista.filter(t => {
+      const proyecto = proyectoDeTarea(t);
+      const sprint = sprints.find(s => s.id === t.sprintId);
+      return [
+        t.titulo,
+        t.descripcion,
+        t.estado,
+        t.prioridad,
+        t.tipo,
+        textoAsignado(t),
+        textoColaboradores(t),
+        proyecto?.nombre,
+        sprint?.nombre
+      ].some(valor => String(valor || '').toLowerCase().includes(texto));
+    });
   }
 
   return lista;
@@ -952,6 +1047,7 @@ window.guardarTarea = async () => {
     );
 
     await registrarCambiosAsignacion(tareaActual, tareaIdGuardada, titulo, usuarioAsignado, colaboradoresUids);
+    await sincronizarAsignacionConEstructura(datos.proyectoId, sprintId, usuarioAsignado, colaboradoresDatos);
 
     cerrarModal();
   } catch (error) {
@@ -1603,19 +1699,35 @@ function actualizarSelectSprints() {
   if (!select) return;
   const valorActual = select.value;
   select.innerHTML = '<option value="">-- Sin sprint --</option>' +
-    sprints.map(s => `<option value="${s.id}">${s.nombre} (${s.estado})</option>`).join('');
+    sprintsVisibles().map(s => `<option value="${s.id}">${s.nombre} (${s.estado})</option>`).join('');
   select.value = valorActual;
 }
 
 function renderizarListaSprints() {
   const lista = document.getElementById('lista-sprints');
   if (!lista) return;
-  if (sprints.length === 0) {
+  const texto = (document.getElementById('buscar-sprint')?.value || '').trim().toLowerCase();
+  const visibles = sprintsVisibles();
+  const sprintsFiltrados = visibles.filter(s => !texto || [
+    s.nombre,
+    s.objetivo,
+    s.estado,
+    s.fechaInicio,
+    s.fechaFin,
+    textoResponsableSprint(s),
+    textoParticipantesSprint(s)
+  ].some(valor => String(valor || '').toLowerCase().includes(texto)));
+
+  if (visibles.length === 0) {
     lista.innerHTML = '<p style="color:#999;font-size:13px;">No hay sprints creados aÃºn.</p>';
     return;
   }
+  if (sprintsFiltrados.length === 0) {
+    lista.innerHTML = '<p style="color:#999;font-size:13px;">No hay sprints con ese filtro.</p>';
+    return;
+  }
   const proyectoCerrado = proyectoEstaCerrado();
-  lista.innerHTML = sprints.map(s => `
+  lista.innerHTML = sprintsFiltrados.map(s => `
     <div class="sprint-item">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <strong>${s.nombre}</strong>
@@ -1634,14 +1746,18 @@ function renderizarListaSprints() {
         <span>${metricasSprint(s.id).avance}% avance</span>
       </div>
       <div style="display:flex;gap:6px;margin-top:6px">
-        ${!proyectoCerrado ? `<button class="mock-btn" onclick="window.editarSprint('${s.id}')">Editar</button>` : ''}
-        ${!proyectoCerrado ? `<button class="mock-btn" onclick="window.cambiarEstadoSprint('${s.id}', 'activo')">Activar</button>` : ''}
-        ${!proyectoCerrado ? `<button class="mock-btn" onclick="window.cambiarEstadoSprint('${s.id}', 'cerrado')">Cerrar</button>` : ''}
+        ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.editarSprint('${s.id}')">Editar</button>` : ''}
+        ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.cambiarEstadoSprint('${s.id}', 'activo')">Activar</button>` : ''}
+        ${(esAdmin() || esLider()) && !proyectoCerrado ? `<button class="mock-btn" onclick="window.cambiarEstadoSprint('${s.id}', 'cerrado')">Cerrar</button>` : ''}
         ${esAdmin() ? `<button class="mock-btn" style="color:red;border-color:red" onclick="window.borrarSprint('${s.id}', '${s.nombre}')">Eliminar</button>` : ''}
       </div>
     </div>
   `).join('');
 }
+
+window.filtrarSprints = () => {
+  renderizarListaSprints();
+};
 
 window.editarSprint = (sprintId) => {
   if (!esAdmin() && !esLider()) {
@@ -1852,19 +1968,19 @@ window.actualizarDestinoInvitacion = () => {
   if (!destino) return;
 
   if (alcance === 'proyecto') {
-    const opciones = proyectos
+    const opciones = proyectosVisibles()
       .filter(p => p.estado === 'activo')
       .map(p => `<option value="${p.id}">${p.nombre}</option>`)
       .join('');
-    destino.innerHTML = opciones || '<option value="">-- No hay proyectos activos --</option>';
-    if (proyectoActivoId && proyectos.some(p => p.id === proyectoActivoId && p.estado === 'activo')) {
+    destino.innerHTML = opciones || '<option value="">-- No hay proyectos activos asignados --</option>';
+    if (proyectoActivoId && proyectosVisibles().some(p => p.id === proyectoActivoId && p.estado === 'activo')) {
       destino.value = proyectoActivoId;
     }
     return;
   }
 
   if (alcance === 'sprint') {
-    destino.innerHTML = sprints
+    destino.innerHTML = sprintsVisibles()
       .map(s => `<option value="${s.id}">${s.nombre}</option>`)
       .join('') || '<option value="">-- No hay sprints --</option>';
     return;
@@ -2070,7 +2186,7 @@ function actualizarBotonProyectos() {
   const btn = document.getElementById('btn-nombre-proyecto');
   if (!btn) return;
   if (proyectoActivoId) {
-    const activo = proyectosVisibles().find(p => p.id === proyectoActivoId);
+    const activo = proyectoPorId(proyectoActivoId);
     btn.textContent = activo ? activo.nombre : 'Proyectos';
   } else {
     btn.textContent = 'Proyectos';
@@ -2081,10 +2197,22 @@ function renderizarListaProyectos() {
   const cont = document.getElementById('lista-proyectos-dropdown');
   if (!cont) return;
   actualizarVisibilidadCrearProyecto();
-  const visibles = proyectosVisibles();
+  const texto = (document.getElementById('buscar-proyecto-dropdown')?.value || '').trim().toLowerCase();
+  const visibles = proyectosVisibles().filter(p => !texto || [
+    p.nombre,
+    p.estado,
+    p.fechaInicio,
+    p.fechaFin,
+    textoResponsableProyecto(p),
+    textoMiembrosProyecto(p)
+  ].some(valor => String(valor || '').toLowerCase().includes(texto)));
 
-  if (visibles.length === 0) {
+  if (proyectosVisibles().length === 0) {
     cont.innerHTML = '<p style="color:#999;font-size:12px;padding:8px;">No hay proyectos asignados.</p>';
+    return;
+  }
+  if (visibles.length === 0) {
+    cont.innerHTML = '<p style="color:#999;font-size:12px;padding:8px;">No hay proyectos con ese filtro.</p>';
     return;
   }
 
@@ -2096,7 +2224,7 @@ function renderizarListaProyectos() {
       <div class="proyecto-dropdown-item ${activo ? 'activo' : ''}" onclick="window.seleccionarProyecto('${p.id}')">
         <div>
           <strong>${p.nombre}</strong>
-          <span class="proyecto-estado">${p.estado}</span>
+          <span class="proyecto-estado">${p.estado}${p.soloReferencia ? ' · asignado por tarea' : ''}</span>
           <span class="proyecto-estado">${p.fechaInicio || '-'} - ${p.fechaFin || '-'}</span>
           <span class="proyecto-estado">Resp: ${textoResponsableProyecto(p)}</span>
           <span class="proyecto-estado">Miembros: ${textoMiembrosProyecto(p)}</span>
@@ -2112,6 +2240,10 @@ function renderizarListaProyectos() {
     `;
   }).join('');
 }
+
+window.filtrarProyectosDropdown = () => {
+  renderizarListaProyectos();
+};
 
 function textoResponsableProyecto(proyecto) {
   const responsable = usuarioPorUid(proyecto.responsableUid);
