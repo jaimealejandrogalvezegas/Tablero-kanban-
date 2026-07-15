@@ -4,7 +4,7 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-aut
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // TU CONFIGURACIÓN REAL DE FIREBASE
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyDeDayD3sez1jTG-S8SlOyRnjbMA_IGB0I",
   authDomain: "kanban-kallpa.firebaseapp.com",
   projectId: "kanban-kallpa",

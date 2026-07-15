@@ -1,5 +1,12 @@
-import { auth, db } from './firebase-config.js';
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { auth, db, firebaseConfig } from './firebase-config.js';
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  createUserWithEmailAndPassword,
+  deleteUser,
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   collection,
   doc,
@@ -13,7 +20,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 let usuarios = [];
-let autorizados = [];
 let adminActual = null;
 
 function normalizarRol(rol) {
@@ -35,8 +41,17 @@ function estadoUsuario(usuario) {
   return dias <= 7 ? 'Activo' : 'Inactivo';
 }
 
-function autorizacionId(email) {
-  return email.toLowerCase().replaceAll('/', '_');
+function generarPasswordTemporal() {
+  const bloque = Math.random().toString(36).slice(2, 8);
+  return `Kg-${bloque}-2026!`;
+}
+
+function obtenerNombreDesdeCorreo(email) {
+  return email.split('@')[0].replace(/[._-]+/g, ' ');
+}
+
+function usuarioExistePorCorreo(email) {
+  return usuarios.some(usuario => (usuario.email || '').toLowerCase() === email);
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -54,7 +69,6 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   cargarUsuarios();
-  cargarAutorizados();
 });
 
 function cargarUsuarios() {
@@ -83,7 +97,7 @@ function renderizarUsuarios() {
       (usuario.email || '').toLowerCase().includes(busqueda);
     const coincideRol = filtroRol === 'todos' || usuario.rol === filtroRol;
     return coincideTexto && coincideRol;
-  });
+  }).sort((a, b) => (a.email || '').localeCompare(b.email || ''));
 
   if (filtrados.length === 0) {
     lista.innerHTML = '<tr><td colspan="7">No hay usuarios para mostrar.</td></tr>';
@@ -123,42 +137,81 @@ function renderizarUsuarios() {
   }).join('');
 }
 
-function cargarAutorizados() {
-  const q = query(collection(db, "usuarios_autorizados"), orderBy("email"));
-  onSnapshot(q, (snapshot) => {
-    autorizados = snapshot.docs.map(documento => ({ id: documento.id, ...documento.data() }));
-    renderizarAutorizados();
-  }, (error) => {
-    console.error("Error al cargar autorizaciones:", error);
-  });
-}
+window.filtrarUsuariosAdmin = () => {
+  renderizarUsuarios();
+};
 
-function renderizarAutorizados() {
-  const lista = document.getElementById('lista-autorizados');
-  if (autorizados.length === 0) {
-    lista.innerHTML = '<tr><td colspan="6">No hay correos autorizados.</td></tr>';
+window.abrirModalAgregarUsuario = () => {
+  document.getElementById('nuevo-usuario-email').value = '';
+  document.getElementById('nuevo-usuario-rol').value = 'miembro';
+  document.getElementById('modal-agregar-usuario').classList.remove('oculto');
+};
+
+window.cerrarModalAgregarUsuario = () => {
+  document.getElementById('modal-agregar-usuario').classList.add('oculto');
+};
+
+window.crearUsuarioAdmin = async () => {
+  const email = document.getElementById('nuevo-usuario-email').value.trim().toLowerCase();
+  const rol = document.getElementById('nuevo-usuario-rol').value;
+
+  if (!email || !email.endsWith('@kg.com.pe')) {
+    alert("Ingresa un correo corporativo @kg.com.pe.");
     return;
   }
 
-  lista.innerHTML = autorizados.map(item => `
-    <tr>
-      <td>${item.email}</td>
-      <td>${item.rolInicial || 'miembro'}</td>
-      <td>${item.cancelado ? 'Cancelado' : (item.usado ? 'Usado' : (item.solicitud ? 'Solicitud pendiente' : 'Pendiente'))}</td>
-      <td>${item.autorizadoPorEmail || (item.solicitud ? 'Solicitado por registro' : '-')}</td>
-      <td>${fechaTexto(item.fechaCreacion || item.fechaSolicitud)}</td>
-      <td>
-        ${item.usado ? '-' : `
-          ${item.solicitud ? `<button class="btn-reactivar-usuario" onclick="autorizarSolicitud('${item.id}', '${item.email}')">Autorizar</button>` : ''}
-          <button class="btn-eliminar-usuario" onclick="eliminarAutorizacion('${item.id}', '${item.email}')">Eliminar</button>
-        `}
-      </td>
-    </tr>
-  `).join('');
-}
+  if (!['administrador', 'lider', 'miembro', 'invitado'].includes(rol)) {
+    alert("Selecciona un rol valido.");
+    return;
+  }
 
-window.filtrarUsuariosAdmin = () => {
-  renderizarUsuarios();
+  if (usuarioExistePorCorreo(email)) {
+    alert("Ese correo ya existe en la lista de usuarios.");
+    return;
+  }
+
+  const passwordTemporal = generarPasswordTemporal();
+  const nombreAppSecundaria = `crear-usuario-${Date.now()}`;
+  const appSecundaria = initializeApp(firebaseConfig, nombreAppSecundaria);
+  const authSecundario = getAuth(appSecundaria);
+  let usuarioAuthCreado = null;
+
+  try {
+    const credencial = await createUserWithEmailAndPassword(authSecundario, email, passwordTemporal);
+    usuarioAuthCreado = credencial.user;
+
+    await setDoc(doc(db, "usuarios", credencial.user.uid), {
+      email,
+      nombre: obtenerNombreDesdeCorreo(email),
+      rol,
+      activo: true,
+      estado: "activo",
+      creadoPorUid: adminActual.uid,
+      creadoPorEmail: adminActual.email,
+      fechaCreacion: serverTimestamp(),
+      ultimoAcceso: null
+    });
+
+    cerrarModalAgregarUsuario();
+    alert(
+      "Usuario creado correctamente.\n\n" +
+      `Correo: ${email}\n` +
+      `Rol: ${rol}\n` +
+      `Contrasena temporal: ${passwordTemporal}\n\n` +
+      "Entrega esa contrasena al usuario para que pueda iniciar sesion."
+    );
+  } catch (error) {
+    if (usuarioAuthCreado) {
+      await deleteUser(usuarioAuthCreado).catch((deleteError) => {
+        console.warn("No se pudo revertir el usuario creado en Authentication:", deleteError);
+      });
+    }
+    console.error("Error al crear usuario:", error);
+    alert("No se pudo crear el usuario: " + (error.message || error.code));
+  } finally {
+    await signOut(authSecundario).catch(() => {});
+    await deleteApp(appSecundaria).catch(() => {});
+  }
 };
 
 window.cambiarRol = async (userId, nuevoRol) => {
@@ -168,7 +221,7 @@ window.cambiarRol = async (userId, nuevoRol) => {
 
 window.desactivarUsuario = async (userId, email) => {
   if (auth.currentUser && auth.currentUser.uid === userId) {
-    alert("No puedes eliminar tu propio usuario desde este panel.");
+    alert("No puedes desactivar tu propio usuario desde este panel.");
     return;
   }
 
@@ -192,81 +245,12 @@ window.reactivarUsuario = async (userId, email) => {
 
   await updateDoc(doc(db, "usuarios", userId), {
     activo: true,
+    estado: "activo",
     fechaReactivacion: serverTimestamp(),
     reactivadoPorUid: adminActual.uid,
     reactivadoPorEmail: adminActual.email
   });
   alert("Usuario reactivado.");
-};
-
-window.abrirModalAutorizar = () => {
-  document.getElementById('authz-email').value = '';
-  document.getElementById('authz-rol').value = 'miembro';
-  document.getElementById('modal-autorizar').classList.remove('oculto');
-};
-
-window.cerrarModalAutorizar = () => {
-  document.getElementById('modal-autorizar').classList.add('oculto');
-};
-
-window.guardarAutorizacion = async () => {
-  const email = document.getElementById('authz-email').value.trim().toLowerCase();
-  const rolInicial = document.getElementById('authz-rol').value;
-
-  if (!email || !email.endsWith('@kg.com.pe')) {
-    alert("Ingresa un correo corporativo @kg.com.pe.");
-    return;
-  }
-
-  if (autorizados.some(item => item.email === email && !item.usado)) {
-    alert("Este correo ya esta autorizado y pendiente de uso.");
-    return;
-  }
-
-  await setDoc(doc(db, "usuarios_autorizados", autorizacionId(email)), {
-    email,
-    rolInicial,
-    usado: false,
-    solicitud: false,
-    estado: "autorizado",
-    autorizadoPorUid: adminActual.uid,
-    autorizadoPorEmail: adminActual.email,
-    fechaCreacion: serverTimestamp()
-  });
-
-  cerrarModalAutorizar();
-  alert("Correo autorizado correctamente.");
-};
-
-window.autorizarSolicitud = async (authId, email) => {
-  const rolInicial = prompt(`Rol inicial para ${email}: miembro, lider o invitado`, "miembro");
-  if (!rolInicial) return;
-  const rol = rolInicial.trim().toLowerCase();
-  if (!['miembro', 'lider', 'invitado'].includes(rol)) {
-    alert("Rol no valido.");
-    return;
-  }
-
-  await updateDoc(doc(db, "usuarios_autorizados", authId), {
-    rolInicial: rol,
-    solicitud: false,
-    estado: "autorizado",
-    autorizadoPorUid: adminActual.uid,
-    autorizadoPorEmail: adminActual.email,
-    fechaCreacion: serverTimestamp()
-  });
-  alert("Solicitud autorizada. El usuario ya puede registrarse.");
-};
-
-window.eliminarAutorizacion = async (authId, email) => {
-  if (!confirm(`Eliminar autorizacion para ${email}?`)) return;
-  await updateDoc(doc(db, "usuarios_autorizados", authId), {
-    usado: true,
-    cancelado: true,
-    fechaCancelacion: serverTimestamp(),
-    canceladoPorUid: adminActual.uid,
-    canceladoPorEmail: adminActual.email
-  });
 };
 
 window.cerrarSesion = async () => {

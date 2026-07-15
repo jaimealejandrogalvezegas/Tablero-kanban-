@@ -647,6 +647,10 @@ header h1 {
   font-size: 14px;
 }
 
+.admin-header .btn-admin-primario {
+  margin-top: 14px;
+}
+
 .admin-section {
   background: white;
   border-radius: 8px;
