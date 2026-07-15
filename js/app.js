@@ -117,9 +117,10 @@ function proyectosVisibles() {
 
 function proyectosAsignadosDesdeTareas() {
   if (!usuarioActual || puedeVerTodo()) return [];
+  const tareasBase = [...tareasAsignadasUsuario, ...tareas];
   const ids = new Set(
-    tareasAsignadasUsuario
-      .filter(t => t.proyectoId && tareaEsPropia(t))
+    tareasBase
+      .filter(t => t.proyectoId && (tareaEsPropia(t) || !puedeVerTodo()))
       .map(t => t.proyectoId)
   );
   return Array.from(ids).map(id => ({
@@ -373,7 +374,36 @@ function sprintEsVisibleParaMi(sprint) {
 }
 
 function sprintsVisibles() {
-  return sprints.filter(sprintEsVisibleParaMi);
+  const mapa = new Map();
+  sprints.filter(sprintEsVisibleParaMi).forEach(s => mapa.set(s.id, s));
+  sprintsAsignadosDesdeTareas().forEach(s => {
+    if (!mapa.has(s.id)) mapa.set(s.id, s);
+  });
+  return Array.from(mapa.values());
+}
+
+function sprintsAsignadosDesdeTareas() {
+  if (!usuarioActual || puedeVerTodo()) return [];
+  const tareasBase = [...tareasAsignadasUsuario, ...tareas];
+  const ids = new Set(
+    tareasBase
+      .filter(t => t.sprintId && (tareaEsPropia(t) || !puedeVerTodo()))
+      .map(t => t.sprintId)
+  );
+  return Array.from(ids).map(id => ({
+    id,
+    nombre: `Sprint asignado ${id.slice(0, 6)}`,
+    objetivo: '',
+    estado: 'activo',
+    fechaInicio: '',
+    fechaFin: '',
+    responsableUid: '',
+    responsableEmail: '',
+    participantesUids: [usuarioActual.uid],
+    participantesEmails: [usuarioActual.email],
+    capacidadHoras: 0,
+    soloReferencia: true
+  }));
 }
 
 function usuarioParticipaEnTarea(tarea, uid) {
@@ -1554,18 +1584,42 @@ window.toggleTiempoTarea = async (tareaId) => {
 };
 
 window.abrirModalSprints = () => {
-  if (!esAdmin() && !esLider()) {
-    alert("Solo administrador o lÃ­der pueden gestionar sprints.");
-    return;
-  }
-  if (proyectoEstaCerrado()) {
+  if ((esAdmin() || esLider()) && proyectoEstaCerrado()) {
     alert("El proyecto esta cerrado. No se pueden crear sprints nuevos.");
-    return;
   }
   sprintEditandoId = null;
+  aplicarModoModalSprints();
+  renderizarListaSprints();
   document.getElementById('btn-guardar-sprint').textContent = 'Crear sprint';
   document.getElementById('modal-sprints').classList.remove('oculto');
 };
+
+function aplicarModoModalSprints() {
+  const gestion = esAdmin() || esLider();
+  const campos = [
+    'inp-sprint-nombre',
+    'inp-sprint-objetivo',
+    'inp-sprint-inicio',
+    'inp-sprint-fin',
+    'inp-sprint-responsable',
+    'inp-sprint-capacidad',
+    'inp-sprint-participantes'
+  ];
+  campos.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !gestion;
+  });
+
+  const btnGuardar = document.getElementById('btn-guardar-sprint');
+  if (btnGuardar) btnGuardar.style.display = gestion ? 'inline-flex' : 'none';
+
+  const ayuda = document.getElementById('texto-sprints-consulta');
+  if (ayuda) {
+    ayuda.textContent = gestion
+      ? 'Gestiona los sprints del proyecto seleccionado.'
+      : 'Consulta los sprints donde estas asignado o tienes tareas.';
+  }
+}
 
 window.cerrarModalSprints = () => {
   sprintEditandoId = null;
@@ -1731,7 +1785,7 @@ function renderizarListaSprints() {
     <div class="sprint-item">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <strong>${s.nombre}</strong>
-        <span class="badge-sprint">${s.estado}</span>
+        <span class="badge-sprint">${s.estado}${s.soloReferencia ? ' · asignado por tarea' : ''}</span>
       </div>
       <span style="font-size:12px;color:#999">${s.fechaInicio} - ${s.fechaFin}</span>
       ${s.objetivo ? `<p class="sprint-objetivo">${s.objetivo}</p>` : ''}
