@@ -29,6 +29,7 @@ import { escucharProyectos, crearProyecto, actualizarProyecto, cambiarEstadoProy
 
 let tableroActualId = null;
 let tareas = [];
+let tareasAsignadasUsuario = [];
 let usuarios = [];
 let unsubTareas = [];
 let unsubUsuarios = null;
@@ -89,6 +90,36 @@ function proyectoActivo() {
   return proyectoActivoId ? proyectos.find(p => p.id === proyectoActivoId) : null;
 }
 
+function proyectoEsVisibleParaMi(proyecto) {
+  if (puedeVerTodo()) return true;
+  if (!usuarioActual || !proyecto) return false;
+  return proyecto.responsableUid === usuarioActual.uid ||
+    proyecto.responsableEmail === usuarioActual.email ||
+    (proyecto.miembrosUids || []).includes(usuarioActual.uid) ||
+    (proyecto.miembrosEmails || []).includes(usuarioActual.email) ||
+    tareasAsignadasUsuario.some(t => t.proyectoId === proyecto.id && tareaEsPropia(t));
+}
+
+function proyectosVisibles() {
+  return proyectos.filter(proyectoEsVisibleParaMi);
+}
+
+function asegurarProyectoVisibleSeleccionado() {
+  const visibles = proyectosVisibles();
+  if (proyectoActivoId && !visibles.some(p => p.id === proyectoActivoId)) {
+    proyectoActivoId = null;
+    localStorage.removeItem('proyectoActivo_' + tableroActualId);
+  }
+  if (!proyectoActivoId && visibles.length > 0) {
+    proyectoActivoId = visibles[0].id;
+    localStorage.setItem('proyectoActivo_' + tableroActualId, proyectoActivoId);
+    cargarSprints();
+    escucharTareas();
+    return true;
+  }
+  return false;
+}
+
 function proyectoEstaCerrado(proyecto = proyectoActivo()) {
   return !!proyecto && ['cerrado', 'finalizado', 'cancelado'].includes(String(proyecto.estado || '').toLowerCase());
 }
@@ -111,12 +142,16 @@ function tareaEsPropia(tarea) {
 
 function puedeEditarTarea(tarea) {
   if (tareaEnProyectoCerrado(tarea)) return false;
-  return esAdmin() || esLider() || (miRol === 'miembro' && tareaEsPropia(tarea));
+  return esAdmin() || esLider();
 }
 
 function puedeMoverTarea(tarea) {
   if (tareaEnProyectoCerrado(tarea)) return false;
   return esAdmin() || esLider() || (miRol === 'miembro' && tareaEsPropia(tarea));
+}
+
+function puedeTrabajarTarea(tarea) {
+  return puedeMoverTarea(tarea);
 }
 
 function puedeEditarCamposGestion() {
@@ -322,6 +357,7 @@ function aplicarTemaOscuro(activo) {
 function limpiarListeners() {
   unsubTareas.forEach(unsub => unsub());
   unsubTareas = [];
+  tareasAsignadasUsuario = [];
   if (unsubUsuarios) unsubUsuarios();
   unsubUsuarios = null;
   if (unsubUsuarioActual) unsubUsuarioActual();
@@ -498,6 +534,7 @@ function escucharTareas() {
   unsubTareas.forEach(unsub => unsub());
   unsubTareas = [];
   tareas = [];
+  tareasAsignadasUsuario = [];
 
   if (puedeVerTodo()) {
     let q = query(collection(db, "tareas"), orderBy("fechaCreacion", "desc"));
@@ -506,6 +543,9 @@ function escucharTareas() {
     }
     unsubTareas.push(onSnapshot(q, (snapshot) => {
       tareas = snapshot.docs.map(documento => ({ id: documento.id, ...documento.data() }));
+      tareasAsignadasUsuario = tareas;
+      asegurarProyectoVisibleSeleccionado();
+      renderizarListaProyectos();
       renderizar();
     }, (error) => console.error("Error al cargar tareas:", error)));
     return;
@@ -514,10 +554,13 @@ function escucharTareas() {
   const tareasPorId = new Map();
   const refrescar = (snapshot) => {
     snapshot.docs.forEach(documento => tareasPorId.set(documento.id, { id: documento.id, ...documento.data() }));
-    tareas = Array.from(tareasPorId.values());
+    tareasAsignadasUsuario = Array.from(tareasPorId.values());
+    tareas = [...tareasAsignadasUsuario];
+    if (asegurarProyectoVisibleSeleccionado()) return;
     if (proyectoActivoId) {
       tareas = tareas.filter(t => t.proyectoId === proyectoActivoId);
     }
+    renderizarListaProyectos();
     renderizar();
   };
 
@@ -621,6 +664,7 @@ function renderizarListaTareas() {
         <span>${progresoSubtareas(t).total ? `${progresoSubtareas(t).completadas}/${progresoSubtareas(t).total}` : '-'}</span>
         <span>${formatearTiempo(segundosRegistrados(t))}</span>
         <span class="lista-acciones">
+          <button class="btn-resumen" onclick="window.abrirResumenTarea('${t.id}')">Resumen</button>
           ${puedeEditarTarea(t) ? `<button class="btn-editar" onclick="window.editarTarea('${t.id}')">Editar</button>` : ''}
           ${esAdmin() ? `<button class="btn-eliminar" onclick="window.eliminarTarea('${t.id}')">Eliminar</button>` : ''}
         </span>
@@ -641,6 +685,7 @@ function crearTarjeta(tarea) {
   }
 
   const puedeGestionarTarea = puedeEditarTarea(tarea);
+  const puedeTrabajar = puedeTrabajarTarea(tarea);
   const tiempoActivo = !!tarea.temporizadorActivo;
   const textoBotonTiempo = tiempoActivo ? 'Pausar' : 'Iniciar';
   const claseTiempo = tiempoActivo ? 'activo' : '';
@@ -684,9 +729,10 @@ function crearTarjeta(tarea) {
       <span class="extra-icono">T</span>
       <span class="extra-badge tiempo">TIEMPO</span>
       <span class="tiempo-valor">${formatearTiempo(segundosRegistrados(tarea))}</span>
-      ${puedeGestionarTarea ? `<button type="button" class="btn-tiempo" onclick="window.toggleTiempoTarea('${tarea.id}')">${textoBotonTiempo}</button>` : ''}
+      ${puedeTrabajar ? `<button type="button" class="btn-tiempo" onclick="window.toggleTiempoTarea('${tarea.id}')">${textoBotonTiempo}</button>` : ''}
     </div>
     <div class="tarjeta-acciones">
+      <button class="btn-resumen" onclick="window.abrirResumenTarea('${tarea.id}')">Resumen</button>
       ${puedeGestionarTarea ? `<button class="btn-editar" onclick="window.editarTarea('${tarea.id}')">Editar</button>` : ''}
       ${esAdmin() ? `<button class="btn-eliminar" onclick="window.eliminarTarea('${tarea.id}')">Eliminar</button>` : ''}
     </div>
@@ -944,6 +990,119 @@ window.editarTarea = async (id) => {
   cargarAdjuntos(id);
   document.getElementById('inp-sprint').value = tarea.sprintId || '';
   document.getElementById('modal-tarea').classList.remove('oculto');
+};
+
+window.abrirResumenTarea = (id) => {
+  const tarea = tareas.find(x => x.id === id);
+  if (!tarea) return;
+
+  const proyecto = proyectoDeTarea(tarea);
+  const sprint = sprints.find(s => s.id === tarea.sprintId);
+  const progreso = progresoSubtareas(tarea);
+  const subtareas = subtareasDeTarea(tarea);
+  const etiquetasTexto = (tarea.etiquetas || [])
+    .map(eid => etiquetas.find(e => e.id === eid)?.nombre)
+    .filter(Boolean)
+    .join(', ');
+
+  document.getElementById('resumen-titulo').textContent = tarea.titulo || 'Resumen de tarea';
+  document.getElementById('resumen-tarea-contenido').innerHTML = `
+    <div class="resumen-grid">
+      <div>
+        <span class="resumen-label">Estado</span>
+        <strong>${tarea.estado || 'pendiente'}</strong>
+      </div>
+      <div>
+        <span class="resumen-label">Prioridad</span>
+        <strong>${tarea.prioridad || 'media'}</strong>
+      </div>
+      <div>
+        <span class="resumen-label">Tipo</span>
+        <strong>${tarea.tipo || 'tarea'}</strong>
+      </div>
+      <div>
+        <span class="resumen-label">Responsable</span>
+        <strong>${textoAsignado(tarea)}</strong>
+      </div>
+      <div>
+        <span class="resumen-label">Proyecto</span>
+        <strong>${proyecto?.nombre || '-'}</strong>
+      </div>
+      <div>
+        <span class="resumen-label">Sprint</span>
+        <strong>${sprint?.nombre || '-'}</strong>
+      </div>
+      <div>
+        <span class="resumen-label">Fecha limite</span>
+        <strong>${tarea.fechaLimite || '-'}</strong>
+      </div>
+      <div>
+        <span class="resumen-label">Tiempo estimado</span>
+        <strong>${tarea.tiempoEstimadoHoras ? `${tarea.tiempoEstimadoHoras}h` : '-'}</strong>
+      </div>
+    </div>
+
+    <section class="resumen-bloque">
+      <h3>Descripcion</h3>
+      <p>${tarea.descripcion || 'Sin descripcion.'}</p>
+    </section>
+
+    <section class="resumen-bloque">
+      <h3>Indicaciones</h3>
+      <p>${tarea.notas || 'Sin notas adicionales.'}</p>
+    </section>
+
+    <section class="resumen-bloque">
+      <h3>Colaboradores y etiquetas</h3>
+      <p><strong>Colaboradores:</strong> ${textoColaboradores(tarea) || '-'}</p>
+      <p><strong>Etiquetas:</strong> ${etiquetasTexto || '-'}</p>
+    </section>
+
+    <section class="resumen-bloque">
+      <div class="resumen-subtareas-header">
+        <h3>Subtareas</h3>
+        <span>${progreso.completadas}/${progreso.total} completadas</span>
+      </div>
+      ${subtareas.length ? `
+        <div class="subtarea-barra resumen-barra"><span style="width:${progreso.porcentaje}%"></span></div>
+        <div class="resumen-subtareas">
+          ${subtareas.map(s => `
+            <label class="resumen-subtarea ${s.completada ? 'completada' : ''}">
+              <input type="checkbox" ${s.completada ? 'checked' : ''} ${puedeTrabajarTarea(tarea) ? '' : 'disabled'}
+                onchange="window.toggleSubtareaDesdeResumen('${tarea.id}', '${s.id}', ${!!s.completada})">
+              <span>${s.texto}</span>
+            </label>
+          `).join('')}
+        </div>
+      ` : '<p>Sin subtareas registradas.</p>'}
+    </section>
+  `;
+
+  document.getElementById('modal-resumen-tarea').classList.remove('oculto');
+};
+
+window.cerrarResumenTarea = () => {
+  document.getElementById('modal-resumen-tarea').classList.add('oculto');
+};
+
+window.toggleSubtareaDesdeResumen = async (tareaId, subtareaId, completada) => {
+  const tarea = tareas.find(t => t.id === tareaId);
+  if (!tarea || !puedeTrabajarTarea(tarea)) {
+    alert("No tienes permisos para actualizar esta subtarea.");
+    return;
+  }
+  const subtareasColeccion = subtareasPorTarea.get(tareaId) || [];
+  if (subtareasColeccion.some(s => s.id === subtareaId)) {
+    await toggleSubtarea(tareaId, subtareaId, !completada);
+  } else {
+    const subtareasActualizadas = (tarea.subtareas || []).map(s =>
+      s.id === subtareaId ? { ...s, completada: !completada } : s
+    );
+    await updateDoc(doc(db, "tareas", tareaId), { subtareas: subtareasActualizadas });
+  }
+  await registrarActividad(tableroActualId, usuarioActual, ACCIONES.SUBTAREA,
+    `Subtarea ${!completada ? 'completada' : 'reabierta'}`, tareaId);
+  window.abrirResumenTarea(tareaId);
 };
 
 window.eliminarTarea = async (id) => {
@@ -1431,10 +1590,7 @@ function cargarProyectos() {
   if (unsubProyectos) unsubProyectos();
   unsubProyectos = escucharProyectos(tableroActualId, (lista) => {
     proyectos = lista;
-    if (proyectoActivoId && !proyectos.some(p => p.id === proyectoActivoId)) {
-      proyectoActivoId = null;
-      localStorage.removeItem('proyectoActivo_' + tableroActualId);
-    }
+    asegurarProyectoVisibleSeleccionado();
     actualizarBotonProyectos();
     renderizarListaProyectos();
     configurarToolbar();
@@ -1914,7 +2070,7 @@ function actualizarBotonProyectos() {
   const btn = document.getElementById('btn-nombre-proyecto');
   if (!btn) return;
   if (proyectoActivoId) {
-    const activo = proyectos.find(p => p.id === proyectoActivoId);
+    const activo = proyectosVisibles().find(p => p.id === proyectoActivoId);
     btn.textContent = activo ? activo.nombre : 'Proyectos';
   } else {
     btn.textContent = 'Proyectos';
@@ -1925,15 +2081,16 @@ function renderizarListaProyectos() {
   const cont = document.getElementById('lista-proyectos-dropdown');
   if (!cont) return;
   actualizarVisibilidadCrearProyecto();
+  const visibles = proyectosVisibles();
 
-  if (proyectos.length === 0) {
-    cont.innerHTML = '<p style="color:#999;font-size:12px;padding:8px;">No hay proyectos aun.</p>';
+  if (visibles.length === 0) {
+    cont.innerHTML = '<p style="color:#999;font-size:12px;padding:8px;">No hay proyectos asignados.</p>';
     return;
   }
 
   const gestion = esAdmin() || esLider();
 
-  cont.innerHTML = proyectos.map(p => {
+  cont.innerHTML = visibles.map(p => {
     const activo = p.id === proyectoActivoId;
     return `
       <div class="proyecto-dropdown-item ${activo ? 'activo' : ''}" onclick="window.seleccionarProyecto('${p.id}')">
@@ -1976,6 +2133,10 @@ window.toggleDropdownProyectos = () => {
 };
 
 window.seleccionarProyecto = (proyectoId) => {
+  if (!proyectosVisibles().some(p => p.id === proyectoId)) {
+    alert("No tienes acceso a este proyecto.");
+    return;
+  }
   proyectoActivoId = proyectoId;
   localStorage.setItem('proyectoActivo_' + tableroActualId, proyectoId);
   actualizarBotonProyectos();

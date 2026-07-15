@@ -418,6 +418,11 @@ header h1 {
   color: white; 
 }
 
+.btn-resumen {
+  background: linear-gradient(135deg, #2D1B4E, #4A2C7A);
+  color: white;
+}
+
 .btn-eliminar { 
   background: linear-gradient(135deg, #e74c3c, #c0392b); 
   color: white; 
@@ -963,6 +968,10 @@ header h1 {
   }
 
   .fila-doble {
+    grid-template-columns: 1fr;
+  }
+
+  .resumen-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1710,6 +1719,94 @@ body.modo-oscuro .proyecto-dropdown-item strong {
   max-width: 760px;
 }
 
+.modal-resumen-tarea {
+  max-width: 780px;
+  width: min(780px, calc(100vw - 32px));
+}
+
+.resumen-tarea-contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.resumen-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.resumen-grid > div,
+.resumen-bloque {
+  background: #fbfafc;
+  border: 1px solid #e8e3f1;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.resumen-label {
+  color: #777;
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.resumen-grid strong,
+.resumen-bloque h3 {
+  color: #2D1B4E;
+}
+
+.resumen-bloque h3 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.resumen-bloque p {
+  color: #555;
+  font-size: 13px;
+  line-height: 1.45;
+  margin-bottom: 6px;
+}
+
+.resumen-subtareas-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.resumen-subtareas-header span {
+  color: #666;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.resumen-barra {
+  margin-bottom: 10px;
+}
+
+.resumen-subtareas {
+  display: grid;
+  gap: 8px;
+}
+
+.resumen-subtarea {
+  align-items: center;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.resumen-subtarea.completada span {
+  color: #888;
+  text-decoration: line-through;
+}
+
 .actividad-filtros {
   align-items: end;
   display: grid;
@@ -1779,6 +1876,13 @@ body.modo-oscuro .actividad-item {
   border-color: #354153;
 }
 
+body.modo-oscuro .resumen-grid > div,
+body.modo-oscuro .resumen-bloque,
+body.modo-oscuro .resumen-subtarea {
+  background: #202833;
+  border-color: #354153;
+}
+
 body.modo-oscuro .sprint-objetivo {
   color: #c9d2df;
 }
@@ -1790,13 +1894,18 @@ body.modo-oscuro .actividad-filtros button {
   color: #e8edf5;
 }
 
-body.modo-oscuro .actividad-main strong {
+body.modo-oscuro .actividad-main strong,
+body.modo-oscuro .resumen-grid strong,
+body.modo-oscuro .resumen-bloque h3 {
   color: #f2f5fb;
 }
 
 body.modo-oscuro .actividad-main span,
 body.modo-oscuro .actividad-main small,
 body.modo-oscuro .actividad-item time,
-body.modo-oscuro .actividad-vacia {
+body.modo-oscuro .actividad-vacia,
+body.modo-oscuro .resumen-label,
+body.modo-oscuro .resumen-bloque p,
+body.modo-oscuro .resumen-subtareas-header span {
   color: #b9c3d0;
 }
