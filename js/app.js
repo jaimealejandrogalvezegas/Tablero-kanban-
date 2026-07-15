@@ -2353,6 +2353,16 @@ window.cerrarConfig = () => {
   document.getElementById('modal-config').classList.add('oculto');
 };
 
+window.togglePasswordVisible = (inputId, boton) => {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  const visible = input.type === 'text';
+  input.type = visible ? 'password' : 'text';
+  boton.textContent = visible ? '👁' : '🙈';
+  boton.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+};
+
 window.cambiarPasswordUsuario = async () => {
   const actual = document.getElementById('pwd-actual').value;
   const nueva = document.getElementById('pwd-nueva').value;

@@ -340,13 +340,22 @@
       </p>
 
       <label>Contraseña actual</label>
-      <input type="password" id="pwd-actual" autocomplete="current-password">
+      <div class="campo-password">
+        <input type="password" id="pwd-actual" autocomplete="current-password">
+        <button type="button" onclick="togglePasswordVisible('pwd-actual', this)" aria-label="Mostrar contraseña">👁</button>
+      </div>
 
       <label>Nueva contraseña</label>
-      <input type="password" id="pwd-nueva" autocomplete="new-password">
+      <div class="campo-password">
+        <input type="password" id="pwd-nueva" autocomplete="new-password">
+        <button type="button" onclick="togglePasswordVisible('pwd-nueva', this)" aria-label="Mostrar contraseña">👁</button>
+      </div>
 
       <label>Confirmar nueva contraseña</label>
-      <input type="password" id="pwd-confirmar" autocomplete="new-password">
+      <div class="campo-password">
+        <input type="password" id="pwd-confirmar" autocomplete="new-password">
+        <button type="button" onclick="togglePasswordVisible('pwd-confirmar', this)" aria-label="Mostrar contraseña">👁</button>
+      </div>
 
       <div class="botones-modal">
         <button type="button" onclick="cambiarPasswordUsuario()">Cambiar contraseña</button>
