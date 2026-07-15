@@ -159,6 +159,15 @@ function asegurarProyectoVisibleSeleccionado() {
   return false;
 }
 
+function seleccionarPrimerProyectoSiFalta() {
+  if (proyectoActivoId) return false;
+  const visibles = proyectosVisibles();
+  if (visibles.length === 0) return false;
+  proyectoActivoId = visibles[0].id;
+  localStorage.setItem('proyectoActivo_' + tableroActualId, proyectoActivoId);
+  return true;
+}
+
 function proyectoEstaCerrado(proyecto = proyectoActivo()) {
   return !!proyecto && ['cerrado', 'finalizado', 'cancelado'].includes(String(proyecto.estado || '').toLowerCase());
 }
@@ -689,7 +698,7 @@ function escucharTareas() {
     unsubTareas.push(onSnapshot(q, (snapshot) => {
       tareas = snapshot.docs.map(documento => ({ id: documento.id, ...documento.data() }));
       tareasAsignadasUsuario = tareas;
-      asegurarProyectoVisibleSeleccionado();
+      seleccionarPrimerProyectoSiFalta();
       renderizarListaProyectos();
       renderizar();
     }, (error) => console.error("Error al cargar tareas:", error)));
@@ -701,7 +710,7 @@ function escucharTareas() {
     snapshot.docs.forEach(documento => tareasPorId.set(documento.id, { id: documento.id, ...documento.data() }));
     tareasAsignadasUsuario = Array.from(tareasPorId.values());
     tareas = [...tareasAsignadasUsuario];
-    if (asegurarProyectoVisibleSeleccionado()) return;
+    seleccionarPrimerProyectoSiFalta();
     if (proyectoActivoId) {
       tareas = tareas.filter(t => t.proyectoId === proyectoActivoId);
     }
@@ -1782,7 +1791,7 @@ function cargarSprints() {
   const proyectoFiltro = puedeVerTodo() ? proyectoActivoId : null;
   unsubSprints = escucharSprints(tableroActualId, proyectoFiltro, (listaSprints) => {
     sprints = listaSprints;
-    asegurarProyectoVisibleSeleccionado();
+    seleccionarPrimerProyectoSiFalta();
     actualizarBotonProyectos();
     renderizarListaProyectos();
     actualizarEstadoProyectoActivo();
