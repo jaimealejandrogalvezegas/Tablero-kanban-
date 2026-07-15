@@ -900,11 +900,12 @@ function crearTarjeta(tarea) {
         </div>
         <div class="subtarea-barra"><span style="width:${progreso.porcentaje}%"></span></div>
       </div>` : ''}
-    <div class="tarjeta-extra tarjeta-adjuntos" onclick="window.abrirAdjuntosTarea('${tarea.id}')">
-      <span class="extra-icono">A</span>
-      <span class="extra-badge adjuntos">ADJUNTOS</span>
-      <span class="extra-texto">clic para ver/subir archivos</span>
-    </div>
+    ${puedeTrabajar ? `
+      <div class="tarjeta-extra tarjeta-adjuntos" onclick="window.abrirAdjuntosTarea('${tarea.id}')">
+        <span class="extra-icono">A</span>
+        <span class="extra-badge adjuntos">ADJUNTOS</span>
+        <span class="extra-texto">clic para ver/subir archivos</span>
+      </div>` : ''}
     <div class="tarjeta-extra tarjeta-tiempo ${claseTiempo}">
       <span class="extra-icono">T</span>
       <span class="extra-badge tiempo">TIEMPO</span>
@@ -958,6 +959,8 @@ window.abrirModalTarea = () => {
   renderizarSelectorEtiquetas();
   tareaEditandoId = null;
   subtareasTemp = [];
+  document.getElementById('form-tarea-grid').style.display = 'grid';
+  document.getElementById('btn-guardar-tarea').style.display = 'inline-flex';
   document.getElementById('modal-titulo').textContent = 'Nueva tarea';
   document.getElementById('inp-titulo').value = '';
   document.getElementById('inp-descripcion').value = '';
@@ -983,6 +986,8 @@ window.cerrarModal = () => {
   document.getElementById('lista-comentarios').innerHTML = '';
   document.getElementById('lista-adjuntos').innerHTML = '';
   document.getElementById('subtareas-container').innerHTML = '';
+  document.getElementById('form-tarea-grid').style.display = 'grid';
+  document.getElementById('btn-guardar-tarea').style.display = 'inline-flex';
 };
 
 function aplicarPermisosModal(tarea) {
@@ -1152,6 +1157,8 @@ window.editarTarea = async (id) => {
 
   tareaEditandoId = id;
   subtareasTemp = tarea.subtareas ? [...tarea.subtareas] : [];
+  document.getElementById('form-tarea-grid').style.display = 'grid';
+  document.getElementById('btn-guardar-tarea').style.display = 'inline-flex';
   document.getElementById('modal-titulo').textContent = 'Editar tarea';
   document.getElementById('inp-titulo').value = tarea.titulo || '';
   document.getElementById('inp-descripcion').value = tarea.descripcion || '';
@@ -1539,18 +1546,36 @@ function cargarAdjuntos(tareaId) {
       <div class="adjunto-item">
         <a href="${a.url}" target="_blank" rel="noopener">${a.nombre}</a>
         <span>${a.subidoPorEmail || ''}</span>
-        ${tarea && puedeEditarTarea(tarea) ? `<button type="button" onclick="window.borrarAdjunto('${a.id}')">x</button>` : ''}
+        ${tarea && (puedeEditarTarea(tarea) || a.subidoPorId === usuarioActual.uid) ? `<button type="button" onclick="window.borrarAdjunto('${a.id}')">x</button>` : ''}
       </div>
     `).join('');
   });
 }
 
 window.abrirAdjuntosTarea = (tareaId) => {
-  window.editarTarea(tareaId);
+  const tarea = tareas.find(t => t.id === tareaId);
+  if (!tarea || !puedeTrabajarTarea(tarea)) {
+    alert("No tienes permisos para adjuntar archivos en esta tarea.");
+    return;
+  }
+
+  tareaEditandoId = tareaId;
+  document.getElementById('modal-titulo').textContent = `Adjuntos: ${tarea.titulo || 'Tarea'}`;
+  document.getElementById('form-tarea-grid').style.display = 'none';
+  document.getElementById('btn-guardar-tarea').style.display = 'none';
+  document.getElementById('seccion-comentarios').classList.add('oculto');
+  document.getElementById('seccion-adjuntos').classList.remove('oculto');
+  cargarAdjuntos(tareaId);
+  document.getElementById('modal-tarea').classList.remove('oculto');
 };
 
 window.guardarAdjunto = async () => {
   if (!tareaEditandoId) return;
+  const tarea = tareas.find(t => t.id === tareaEditandoId);
+  if (!tarea || !puedeTrabajarTarea(tarea)) {
+    alert("No tienes permisos para adjuntar archivos en esta tarea.");
+    return;
+  }
   const nombreInput = document.getElementById('inp-adjunto-nombre');
   const urlInput = document.getElementById('inp-adjunto-url');
   const nombre = nombreInput.value.trim();
@@ -1599,7 +1624,7 @@ function iniciarRefrescoTiempo() {
 
 window.toggleTiempoTarea = async (tareaId) => {
   const tarea = tareas.find(t => t.id === tareaId);
-  if (!tarea || !puedeEditarTarea(tarea)) {
+  if (!tarea || !puedeTrabajarTarea(tarea)) {
     alert("No tienes permisos para registrar tiempo en esta tarea.");
     return;
   }

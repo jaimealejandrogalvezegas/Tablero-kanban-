@@ -86,7 +86,7 @@
     <div class="modal-contenido modal-tarea-contenido">
       <h2 id="modal-titulo">Nueva tarea</h2>
 
-      <div class="tarea-form-grid">
+      <div class="tarea-form-grid" id="form-tarea-grid">
         <section>
           <label>Titulo *</label>
           <input type="text" id="inp-titulo" required>
@@ -176,7 +176,7 @@
       </div>
 
       <div class="botones-modal">
-        <button onclick="guardarTarea()">Guardar</button>
+        <button id="btn-guardar-tarea" onclick="guardarTarea()">Guardar</button>
         <button onclick="cerrarModal()">Cancelar</button>
       </div>
     </div>
