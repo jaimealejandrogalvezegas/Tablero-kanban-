@@ -144,11 +144,14 @@ function renderizarAutorizados() {
     <tr>
       <td>${item.email}</td>
       <td>${item.rolInicial || 'miembro'}</td>
-      <td>${item.cancelado ? 'Cancelado' : (item.usado ? 'Usado' : 'Pendiente')}</td>
-      <td>${item.autorizadoPorEmail || '-'}</td>
-      <td>${fechaTexto(item.fechaCreacion)}</td>
+      <td>${item.cancelado ? 'Cancelado' : (item.usado ? 'Usado' : (item.solicitud ? 'Solicitud pendiente' : 'Pendiente'))}</td>
+      <td>${item.autorizadoPorEmail || (item.solicitud ? 'Solicitado por registro' : '-')}</td>
+      <td>${fechaTexto(item.fechaCreacion || item.fechaSolicitud)}</td>
       <td>
-        ${item.usado ? '-' : `<button class="btn-eliminar-usuario" onclick="eliminarAutorizacion('${item.id}', '${item.email}')">Eliminar</button>`}
+        ${item.usado ? '-' : `
+          ${item.solicitud ? `<button class="btn-reactivar-usuario" onclick="autorizarSolicitud('${item.id}', '${item.email}')">Autorizar</button>` : ''}
+          <button class="btn-eliminar-usuario" onclick="eliminarAutorizacion('${item.id}', '${item.email}')">Eliminar</button>
+        `}
       </td>
     </tr>
   `).join('');
@@ -224,6 +227,8 @@ window.guardarAutorizacion = async () => {
     email,
     rolInicial,
     usado: false,
+    solicitud: false,
+    estado: "autorizado",
     autorizadoPorUid: adminActual.uid,
     autorizadoPorEmail: adminActual.email,
     fechaCreacion: serverTimestamp()
@@ -231,6 +236,26 @@ window.guardarAutorizacion = async () => {
 
   cerrarModalAutorizar();
   alert("Correo autorizado correctamente.");
+};
+
+window.autorizarSolicitud = async (authId, email) => {
+  const rolInicial = prompt(`Rol inicial para ${email}: miembro, lider o invitado`, "miembro");
+  if (!rolInicial) return;
+  const rol = rolInicial.trim().toLowerCase();
+  if (!['miembro', 'lider', 'invitado'].includes(rol)) {
+    alert("Rol no valido.");
+    return;
+  }
+
+  await updateDoc(doc(db, "usuarios_autorizados", authId), {
+    rolInicial: rol,
+    solicitud: false,
+    estado: "autorizado",
+    autorizadoPorUid: adminActual.uid,
+    autorizadoPorEmail: adminActual.email,
+    fechaCreacion: serverTimestamp()
+  });
+  alert("Solicitud autorizada. El usuario ya puede registrarse.");
 };
 
 window.eliminarAutorizacion = async (authId, email) => {

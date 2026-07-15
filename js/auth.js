@@ -47,6 +47,18 @@ async function obtenerAutorizacion(email) {
   return { id: snap.id, ref, ...data };
 }
 
+async function registrarSolicitudAcceso(email) {
+  const ref = doc(db, "usuarios_autorizados", autorizacionId(email));
+  await setDoc(ref, {
+    email,
+    rolInicial: "miembro",
+    usado: false,
+    solicitud: true,
+    estado: "pendiente",
+    fechaSolicitud: serverTimestamp()
+  }, { merge: true });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const btnLogin = document.getElementById('btn-login');
   const btnRegistro = document.getElementById('btn-registro');
@@ -79,7 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const autorizacion = await obtenerAutorizacion(email);
       if (!autorizacion) {
-        alert("Este correo no esta autorizado para registrarse. Solicita acceso al administrador.");
+        await registrarSolicitudAcceso(email);
+        alert("Solicitud enviada al administrador. Cuando te autoricen podras crear tu cuenta.");
         registrandoUsuario = false;
         btnRegistro.disabled = false;
         btnLogin.disabled = false;
